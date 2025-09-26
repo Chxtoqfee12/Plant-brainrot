@@ -3,15 +3,15 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/
 
 -- Create Main Window
 local Window = Library:Window({
-    Title = "Auto Buy UI",
-    Desc = "Spam Buy Items",
+    Title = "CHX Plant a Brainrot",
+    Desc = "By ChristopFxx",
     Icon = 105059922903197,
     Theme = "Dark",
     Config = {
         Keybind = Enum.KeyCode.LeftControl,
         Size = UDim2.new(0, 400, 0, 250)
     },
-    CloseUIButton = {Enabled = true, Text = "Close"}
+    CloseUIButton = {Enabled = true, Text = "Close/Open"}
 })
 
 -- Tab
@@ -21,11 +21,10 @@ Tab:Section({Title = "Settings"})
 -- Remote Event
 local buyEvent = game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
 
--- ตัวแปร
-local autoBuy = false
-local selectedItem = nil
+-- ตัวแปรเก็บสถานะไอเท็มแต่ละตัว
+local autoBuyItems = {}
 
--- Dropdown เลือกไอเท็ม
+-- รายการไอเท็ม
 local shopItems = {
     "Meme Lucky Egg",
     "Secret Lucky Egg",
@@ -39,49 +38,47 @@ local shopItems = {
     "Water Bucket",
     "Frost Blower",
 }
-Tab:Dropdown({
-    Title = "Select Item",
-    List = shopItems,
-    Value = "Water Bucket",
-    Callback = function(v)
-        selectedItem = v
-        print("Selected Item:", selectedItem)
-    end
-})
 
--- Toggle Auto Buy
-Tab:Toggle({
-    Title = "Enable Auto Buy",
-    Desc = "Spam buy selected item",
-    Value = false,
-    Callback = function(v)
-        autoBuy = v
-        print("Auto Buy:", autoBuy)
-    end
-})
+-- สร้าง Toggle สำหรับแต่ละไอเท็ม
+for _, itemName in ipairs(shopItems) do
+    autoBuyItems[itemName] = false -- ค่าเริ่มต้นปิด
+    Tab:Toggle({
+        Title = itemName,
+        Desc = "Auto buy "..itemName,
+        Value = false,
+        Callback = function(v)
+            autoBuyItems[itemName] = v
+            print(itemName.." Auto Buy:", v)
+        end
+    })
+end
 
--- Loop Auto Buy (ทุก 1 วิ)
+-- Loop Auto Buy Sequential
 task.spawn(function()
     while true do
-        task.wait(1) -- รันทุก 1 วิ
-        if autoBuy and selectedItem then
-            local args = {
-                {
-                    selectedItem,
-                    " "
+        task.wait(0.1) -- เช็คทุก 0.1 วิ
+        for itemName, isEnabled in pairs(autoBuyItems) do
+            if isEnabled then
+                local args = {
+                    {itemName, " "}
                 }
-            }
-            pcall(function()
-                buyEvent:FireServer(unpack(args))
-                print("Auto buying "..selectedItem)
-            end)
+                -- พยายามยิง Server
+                local success, err = pcall(function()
+                    buyEvent:FireServer(unpack(args))
+                end)
+                if success then
+                else
+                end
+                task.wait(1) -- รอ 1 วิ ก่อนซื้ออันถัดไป
+            end
         end
     end
 end)
 
+
 -- Notification
 Window:Notify({
     Title = "Auto Buy",
-    Desc = "UI Loaded! Select an item and toggle Auto Buy.",
+    Desc = "UI Loaded! Toggle the items you want to auto buy.",
     Time = 4
 })
