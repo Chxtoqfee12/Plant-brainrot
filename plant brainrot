@@ -37,7 +37,7 @@ local shopItems = {
     "Frost Grenade",
     "Carrot Launcher",
     "Water Bucket",
-    "Frost Blower"
+    "Frost Blower",
 }
 Tab:Dropdown({
     Title = "Select Item",
