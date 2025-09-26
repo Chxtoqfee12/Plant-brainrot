@@ -3,19 +3,19 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/
 
 -- Create Main Window
 local Window = Library:Window({
-    Title = "CHX Plant a Brainrot",
-    Desc = "By ChristopFxx",
+    Title = "CHX Plant vs Brainrot",
+    Desc = "discord.gg/zHMEUZrHZ6",
     Icon = 105059922903197,
     Theme = "Dark",
     Config = {
         Keybind = Enum.KeyCode.LeftControl,
         Size = UDim2.new(0, 400, 0, 250)
     },
-    CloseUIButton = {Enabled = true, Text = "Closen"}
+    CloseUIButton = {Enabled = true, Text = "Close"}
 })
 
 -- Tab
-local Tab = Window:Tab({Title = "Auto Buy", Icon = "star"})
+local Tab = Window:Tab({Title = "Auto buy", Icon = "star"})
 Tab:Section({Title = "Settings"})
 
 -- Remote Event
@@ -78,7 +78,7 @@ end)
 
 -- Notification
 Window:Notify({
-    Title = "Auto Buy",
-    Desc = "UI Loaded! Toggle the items you want to auto buy.",
+    Title = "Notification",
+    Desc = "สคริปแมพ 'Plant vs Brainrot' V1 เจอบัคแจ้งที่ดิส discord.gg/zHMEUZrHZ6.",
     Time = 4
 })
