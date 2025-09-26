@@ -82,6 +82,17 @@ local buyEvent = game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2")
 -- ================= Gears Shop =================
 Tab:Section({Title = "Gears Shop"})
 
+-- Toggle Buy All Gears
+local buyAllGearsEnabled = false
+Tab:Toggle({
+    Title = "Auto Buy All Gears",
+    Desc = "Automatically buy all gears continuously",
+    Value = false,
+    Callback = function(v)
+        buyAllGearsEnabled = v
+    end
+})
+
 local gearsItems = {
     "Meme Lucky Egg",
     "Secret Lucky Egg",
@@ -111,32 +122,35 @@ for _, gearName in ipairs(gearsItems) do
     })
 end
 
--- Toggle Buy All Gears
-local buyAllGearsEnabled = false
-Tab:Toggle({
-    Title = "Auto Buy All Gears",
-    Desc = "Automatically buy all gears continuously",
-    Value = false,
-    Callback = function(v)
-        buyAllGearsEnabled = v
-    end
-})
+
+
 
 -- ================= Seeds Shop =================
 Tab:Section({Title = "Seeds Shop"})
 
+-- Toggle Buy All Seeds
+local buyAllSeedsEnabled = false
+Tab:Toggle({
+    Title = "Auto Buy All Seeds",
+    Desc = "Automatically buy all seeds continuously",
+    Value = false,
+    Callback = function(v)
+        buyAllSeedsEnabled = v
+    end
+})
+
 local seedItems = {
-    "Dragon Fruit Seed",
-    "Watermelon Seed",
-    "Mr Carrot Seed",
-    "Cocotank Seed",
-    "Tomatrio Seed",
-    "Carnivorous Plant Seed",
-    "Strawberry Seed",
-    "Sunflower Seed",
-    "Pumpkin Seed",
-    "Eggplant Seed",
     "Cactus Seed",
+    "Strawberry Seed",
+    "Pumpkin Seed",
+    "Sunflower Seed",
+    "Dragon Fruit Seed",
+    "Eggplant Seed",
+    "Watermelon Seed",
+    "Cocotank Seed",
+    "Carnivorous Plant Seed",
+    "Mr Carrot Seed",
+    "Tomatrio Seed",
 }
 
 local autoBuySeeds = {}
@@ -154,16 +168,6 @@ for _, seedName in ipairs(seedItems) do
     })
 end
 
--- Toggle Buy All Seeds
-local buyAllSeedsEnabled = false
-Tab:Toggle({
-    Title = "Auto Buy All Seeds",
-    Desc = "Automatically buy all seeds continuously",
-    Value = false,
-    Callback = function(v)
-        buyAllSeedsEnabled = v
-    end
-})
 
 -- ================= Loop Auto Buy =================
 task.spawn(function()
