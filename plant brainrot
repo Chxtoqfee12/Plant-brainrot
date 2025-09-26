@@ -258,15 +258,14 @@ end
 -- ================= Loop Auto Buy =================
 task.spawn(function()
     while true do
-        task.wait() -- เล็กน้อยกันไม่ให้ค้าง script
+        task.wait(0.05) -- กำหนดดีเลย์นิดหน่อยเพื่อกันค้าง
 
-        -- Auto Buy Gears
         if buyAllGearsEnabled then
             for _, gearName in ipairs(gearsItems) do
                 pcall(function()
                     buyEvent:FireServer({gearName," "})
                 end)
-                -- เอา wait ออก → spam buy ทุกชิ้นทันที
+                task.wait(0.05)
             end
         else
             for gearName, isEnabled in pairs(autoBuyGears) do
@@ -274,16 +273,17 @@ task.spawn(function()
                     pcall(function()
                         buyEvent:FireServer({gearName," "})
                     end)
+                    task.wait(0.05)
                 end
             end
         end
 
-        -- Auto Buy Seeds
         if buyAllSeedsEnabled then
             for _, seedName in ipairs(seedItems) do
                 pcall(function()
                     buyEvent:FireServer({seedName,"\a"})
                 end)
+                task.wait(0.05)
             end
         else
             for seedName, isEnabled in pairs(autoBuySeeds) do
@@ -291,9 +291,11 @@ task.spawn(function()
                     pcall(function()
                         buyEvent:FireServer({seedName,"\a"})
                     end)
+                    task.wait(0.05)
                 end
             end
         end
     end
 end)
+
 
