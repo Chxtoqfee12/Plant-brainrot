@@ -7,7 +7,7 @@ local Window = Library:Window({
     Desc = "discord.gg/zHMEUZrHZ6",
     Icon = 105059922903197,
     Theme = "Dark",
-    Config = {Keybind = Enum.KeyCode.LeftControl, Size = UDim2.new(0,400,0,250)},
+    Config = {Keybind = Enum.KeyCode.LeftControl, Size = UDim2.new(0,450,0,350)},
     CloseUIButton = {Enabled = true, Text = "Close/Open"}
 })
 
@@ -17,6 +17,92 @@ Window:Notify({
     Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord",
     Time = 4
 })
+
+-- ===== Main Tab =====
+local MainTab = Window:Tab({Title = "Main", Icon = "star"})
+MainTab:Section({Title = "Player Boosts"})
+
+-- Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+
+-- Speed Boost Slider
+MainTab:Slider({
+    Title = "Speed Boost",
+    Desc = "Adjust WalkSpeed",
+    Min = 16,  -- ค่าเริ่มต้นปกติ
+    Max = 200, -- ค่าสูงสุด
+    Default = 16,
+    Callback = function(value)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
+        end
+    end
+})
+
+-- Jump Power Slider
+MainTab:Slider({
+    Title = "Jump Power",
+    Desc = "Adjust Jump Power",
+    Min = 50,   -- ปกติประมาณ 50
+    Max = 500,  -- สูงสุด
+    Default = 50,
+    Callback = function(value)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
+        end
+    end
+})
+
+
+-- Boost FPS Clay Mode
+MainTab:Button({
+    Title = "Boost FPS (Clay Mode)",
+    Desc = "Remove textures & smooth everything like clay",
+    Callback = function()
+        -- ตั้งค่า Quality ต่ำสุด
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        pcall(function() game.Lighting.GlobalShadows = false end)
+        pcall(function() game.Lighting.FogEnd = 9e9 end)
+
+        -- ปิด Effect ทั้งหมด
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") then
+                v.Enabled = false
+            elseif v:IsA("Explosion") then
+                v.Visible = false
+            end
+        end
+
+        -- ลบ Texture/Decal ทั้งหมด (Block / ตัวละคร)
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("Decal") or v:IsA("Texture") then
+                v:Destroy()
+            elseif v:IsA("SpecialMesh") then
+                -- ลบ Mesh ให้เป็น block ธรรมดา
+                v:Destroy()
+            end
+        end
+
+        -- เปลี่ยนวัสดุทั้งหมดให้เป็น SmoothPlastic (คล้ายดินน้ำมัน)
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Material = Enum.Material.SmoothPlastic
+            end
+        end
+
+        -- บังคับ FPS Cap (ถ้า executor รองรับ)
+        if setfpscap then
+            setfpscap(240)
+        end
+
+        print("✅ Clay Mode Applied (ทุกอย่างกลายเป็นดินน้ำมัน)")
+    end
+})
+
+
+
 
 
 -- Tab
@@ -86,7 +172,7 @@ Tab:Section({Title = "Gears Shop"})
 local buyAllGearsEnabled = false
 Tab:Toggle({
     Title = "Auto Buy All Gears",
-    Desc = "Automatically buy all gears continuously",
+    Desc = "Automatically buy all gears",
     Value = false,
     Callback = function(v)
         buyAllGearsEnabled = v
@@ -132,7 +218,7 @@ Tab:Section({Title = "Seeds Shop"})
 local buyAllSeedsEnabled = false
 Tab:Toggle({
     Title = "Auto Buy All Seeds",
-    Desc = "Automatically buy all seeds continuously",
+    Desc = "Automatically buy all seeds",
     Value = false,
     Callback = function(v)
         buyAllSeedsEnabled = v
@@ -172,7 +258,7 @@ end
 -- ================= Loop Auto Buy =================
 task.spawn(function()
     while true do
-        task.wait(0.1)
+        task.wait() -- เล็กน้อยกันไม่ให้ค้าง script
 
         -- Auto Buy Gears
         if buyAllGearsEnabled then
@@ -180,7 +266,7 @@ task.spawn(function()
                 pcall(function()
                     buyEvent:FireServer({gearName," "})
                 end)
-                task.wait(0.5)
+                -- เอา wait ออก → spam buy ทุกชิ้นทันที
             end
         else
             for gearName, isEnabled in pairs(autoBuyGears) do
@@ -188,7 +274,6 @@ task.spawn(function()
                     pcall(function()
                         buyEvent:FireServer({gearName," "})
                     end)
-                    task.wait(0.5)
                 end
             end
         end
@@ -199,7 +284,6 @@ task.spawn(function()
                 pcall(function()
                     buyEvent:FireServer({seedName,"\a"})
                 end)
-                task.wait(0.5)
             end
         else
             for seedName, isEnabled in pairs(autoBuySeeds) do
@@ -207,9 +291,9 @@ task.spawn(function()
                     pcall(function()
                         buyEvent:FireServer({seedName,"\a"})
                     end)
-                    task.wait(0.5)
                 end
             end
         end
     end
 end)
+
