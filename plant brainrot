@@ -16,7 +16,7 @@ local Window = Library:Window({
 
 -- Tab
 local Tab = Window:Tab({Title = "Auto buy", Icon = "star"})
-Tab:Section({Title = "Settings"})
+Tab:Section({Title = "Gears Shop"})
 
 -- Remote Event
 local buyEvent = game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
@@ -79,6 +79,6 @@ end)
 -- Notification
 Window:Notify({
     Title = "Notification",
-    Desc = "สคริปแมพ 'Plant vs Brainrot' V1 เจอบัคแจ้งที่ดิส discord.gg/zHMEUZrHZ6.",
+    Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord",
     Time = 4
 })
