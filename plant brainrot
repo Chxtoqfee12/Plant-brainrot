@@ -15,7 +15,7 @@ local Window = Library:Window({
 })
 
 -- Tab
-local Tab = Window:Tab({Title = "CHX Plant a Brainrot", Icon = "star"})
+local Tab = Window:Tab({Title = "Auto Buy", Icon = "star"})
 Tab:Section({Title = "Settings"})
 
 -- Remote Event
