@@ -7,25 +7,27 @@ local Window = Library:Window({
     Desc = "discord.gg/zHMEUZrHZ6",
     Icon = 105059922903197,
     Theme = "Dark",
-    Config = {
-        Keybind = Enum.KeyCode.LeftControl,
-        Size = UDim2.new(0, 400, 0, 250)
-    },
-    CloseUIButton = {Enabled = true, Text = "Close"}
+    Config = {Keybind = Enum.KeyCode.LeftControl, Size = UDim2.new(0,400,0,250)},
+    CloseUIButton = {Enabled = true, Text = "Close/Open"}
+})
+
+-- Notification
+Window:Notify({
+    Title = "Notification",
+    Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord",
+    Time = 4
 })
 
 -- Tab
 local Tab = Window:Tab({Title = "Auto buy", Icon = "star"})
-Tab:Section({Title = "Gears Shop"})
 
 -- Remote Event
 local buyEvent = game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
 
--- ตัวแปรเก็บสถานะไอเท็มแต่ละตัว
-local autoBuyItems = {}
+-- ================= Gears Shop =================
+Tab:Section({Title = "Gears Shop"})
 
--- รายการไอเท็ม
-local shopItems = {
+local gearsItems = {
     "Meme Lucky Egg",
     "Secret Lucky Egg",
     "Godly Lucky Egg",
@@ -39,46 +41,116 @@ local shopItems = {
     "Frost Blower",
 }
 
--- สร้าง Toggle สำหรับแต่ละไอเท็ม
-for _, itemName in ipairs(shopItems) do
-    autoBuyItems[itemName] = false -- ค่าเริ่มต้นปิด
+local autoBuyGears = {}
+
+-- Toggle ของแต่ละ Gears
+for _, gearName in ipairs(gearsItems) do
+    autoBuyGears[gearName] = false
     Tab:Toggle({
-        Title = itemName,
-        Desc = "Auto buy "..itemName,
+        Title = gearName,
+        Desc = "Auto buy "..gearName,
         Value = false,
         Callback = function(v)
-            autoBuyItems[itemName] = v
-            print(itemName.." Auto Buy:", v)
+            autoBuyGears[gearName] = v
         end
     })
 end
 
--- Loop Auto Buy Sequential
+-- Toggle Buy All Gears
+local buyAllGearsEnabled = false
+Tab:Toggle({
+    Title = "Auto Buy All Gears",
+    Desc = "Automatically buy all gears continuously",
+    Value = false,
+    Callback = function(v)
+        buyAllGearsEnabled = v
+    end
+})
+
+-- ================= Seeds Shop =================
+Tab:Section({Title = "Seeds Shop"})
+
+local seedItems = {
+    "Dragon Fruit Seed",
+    "Watermelon Seed",
+    "Mr Carrot Seed",
+    "Cocotank Seed",
+    "Tomatrio Seed",
+    "Carnivorous Plant Seed",
+    "Strawberry Seed",
+    "Sunflower Seed",
+    "Pumpkin Seed",
+    "Eggplant Seed",
+    "Cactus Seed",
+}
+
+local autoBuySeeds = {}
+
+-- Toggle ของแต่ละ Seed
+for _, seedName in ipairs(seedItems) do
+    autoBuySeeds[seedName] = false
+    Tab:Toggle({
+        Title = seedName,
+        Desc = "Auto buy "..seedName,
+        Value = false,
+        Callback = function(v)
+            autoBuySeeds[seedName] = v
+        end
+    })
+end
+
+-- Toggle Buy All Seeds
+local buyAllSeedsEnabled = false
+Tab:Toggle({
+    Title = "Auto Buy All Seeds",
+    Desc = "Automatically buy all seeds continuously",
+    Value = false,
+    Callback = function(v)
+        buyAllSeedsEnabled = v
+    end
+})
+
+-- ================= Loop Auto Buy =================
 task.spawn(function()
     while true do
-        task.wait(0.1) -- เช็คทุก 0.1 วิ
-        for itemName, isEnabled in pairs(autoBuyItems) do
-            if isEnabled then
-                local args = {
-                    {itemName, " "}
-                }
-                -- พยายามยิง Server
-                local success, err = pcall(function()
-                    buyEvent:FireServer(unpack(args))
+        task.wait(0.1)
+
+        -- Auto Buy Gears
+        if buyAllGearsEnabled then
+            for _, gearName in ipairs(gearsItems) do
+                pcall(function()
+                    buyEvent:FireServer({gearName," "})
                 end)
-                if success then
-                else
+                task.wait(0.5)
+            end
+        else
+            for gearName, isEnabled in pairs(autoBuyGears) do
+                if isEnabled then
+                    pcall(function()
+                        buyEvent:FireServer({gearName," "})
+                    end)
+                    task.wait(0.5)
                 end
-                task.wait(1) -- รอ 1 วิ ก่อนซื้ออันถัดไป
+            end
+        end
+
+        -- Auto Buy Seeds
+        if buyAllSeedsEnabled then
+            for _, seedName in ipairs(seedItems) do
+                pcall(function()
+                    buyEvent:FireServer({seedName,"\a"})
+                end)
+                task.wait(0.5)
+            end
+        else
+            for seedName, isEnabled in pairs(autoBuySeeds) do
+                if isEnabled then
+                    pcall(function()
+                        buyEvent:FireServer({seedName,"\a"})
+                    end)
+                    task.wait(0.5)
+                end
             end
         end
     end
 end)
-
-
--- Notification
-Window:Notify({
-    Title = "Notification",
-    Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord",
-    Time = 4
-})
