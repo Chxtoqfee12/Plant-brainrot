@@ -18,6 +18,12 @@ Window:Notify({
     Time = 4
 })
 
+
+-- Tab
+local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
+
+
+
 -- Tab
 local Tab = Window:Tab({Title = "Auto buy", Icon = "star"})
 
