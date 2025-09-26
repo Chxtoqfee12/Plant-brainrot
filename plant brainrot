@@ -11,7 +11,7 @@ local Window = Library:Window({
         Keybind = Enum.KeyCode.LeftControl,
         Size = UDim2.new(0, 400, 0, 250)
     },
-    CloseUIButton = {Enabled = true, Text = "Close/Open"}
+    CloseUIButton = {Enabled = true, Text = "Closen"}
 })
 
 -- Tab
