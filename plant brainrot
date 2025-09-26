@@ -22,6 +22,55 @@ Window:Notify({
 -- Tab
 local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
 
+-- ====== Sell All Brainrot ======
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+
+local sellingEnabled = false
+local cooldownTime = 20
+local currentCooldown = 0
+
+
+-- Toggle to enable/disable auto selling
+Tab:Toggle({
+    Title = "Auto Sell Brainrot",
+    Desc = "If enabled, it will instantly sell, then sell again every 20 seconds",
+    Default = false,
+    Callback = function(state)
+        sellingEnabled = state
+        if state then
+            -- Sell instantly when turning ON
+            pcall(function()
+                sellRemote:FireServer()
+            end)
+            currentCooldown = cooldownTime
+        else
+            cooldownLabel:Set("Sell Cooldown: OFF")
+        end
+    end
+})
+
+-- Loop for auto sell + update cooldown label
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if sellingEnabled then
+            if currentCooldown <= 0 then
+                -- Fire Remote to sell
+                pcall(function()
+                    sellRemote:FireServer()
+                end)
+                currentCooldown = cooldownTime
+            else
+                currentCooldown -= 1
+            end
+            cooldownLabel:Set("Sell Cooldown: " .. tostring(currentCooldown) .. "s")
+        end
+    end
+end)
+
+
+
 
 
 -- Tab
