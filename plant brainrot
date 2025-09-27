@@ -69,9 +69,36 @@ end
 local MainTab = Window:Tab({Title = "Main", Icon = "home"})
 MainTab:Label({Title = "Welcome, " .. player.Name})
 
+
+
+
+
+
+
 -- ===== TAB 2: Farm =====
 local FarmTab = Window:Tab({Title = "Farm", Icon = "star"})
 
+-- สร้าง TextLabel แสดง Countdown
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FarmCooldownGUI"
+screenGui.Parent = game.CoreGui
+
+local cooldownLabel = Instance.new("TextLabel")
+cooldownLabel.Size = UDim2.new(0, 200, 0, 30)
+cooldownLabel.Position = UDim2.new(0, 10, 0, 10)
+cooldownLabel.BackgroundTransparency = 0.5
+cooldownLabel.BackgroundColor3 = Color3.fromRGB(0,0,0)
+cooldownLabel.TextColor3 = Color3.fromRGB(255,255,255)
+cooldownLabel.TextScaled = true
+cooldownLabel.Text = "Sell Cooldown: OFF"
+cooldownLabel.Parent = screenGui
+
+-- ===== Auto Sell Variables =====
+local sellingEnabled = false
+local cooldownTime = 20
+local currentCooldown = 0
+
+-- ===== Save Home =====
 FarmTab:Button({
     Title = "Save Home",
     Desc = "Click Garden to warp there and press SAVE first!",
@@ -84,6 +111,7 @@ FarmTab:Button({
     end
 })
 
+-- ===== Auto Attack Toggle =====
 FarmTab:Toggle({
     Title = "Auto Attack Brainrot",
     Desc = "You must press SAVE HOME first before using Auto Attack Brainrot!",
@@ -100,6 +128,7 @@ FarmTab:Toggle({
     end
 })
 
+-- ===== Auto Sell Toggle =====
 FarmTab:Toggle({
     Title = "Auto Sell Brainrot",
     Desc = "Automatically sell Brainrots every 20 seconds",
@@ -107,23 +136,28 @@ FarmTab:Toggle({
     Callback = function(state)
         sellingEnabled = state
         if state then
+            -- ขายทันทีตอนเปิด
             pcall(function() sellRemote:FireServer() end)
             currentCooldown = cooldownTime
         end
     end
 })
 
--- Loop Auto Attack + Sell
+-- ===== Loop Auto Attack + Auto Sell + Update Countdown =====
 task.spawn(function()
     while true do
         task.wait(0.03)
+
+        -- ===== Auto Attack =====
         if autoAttackEnabled and player.Character then
             local hrp = player.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = player.Character:FindFirstChild("Humanoid")
             if hrp and humanoid then
-                humanoid.PlatformStand, humanoid.Sit = false, false
+                humanoid.PlatformStand = false
+                humanoid.Sit = false
                 hrp.Velocity = Vector3.zero
 
+                -- Warp to home first
                 if not hasWarpedToHome and homeSaved and homePosition then
                     hrp.CFrame = CFrame.new(homePosition)
                     hasWarpedToHome = true
@@ -131,6 +165,7 @@ task.spawn(function()
                     startFarming = true
                 end
 
+                -- Farming Brainrots
                 if startFarming then
                     local brainrots = getBrainrots()
                     local closest, minDist = nil, math.huge
@@ -139,7 +174,10 @@ task.spawn(function()
                             local part = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildWhichIsA("BasePart")
                             if part then
                                 local dist = (part.Position - hrp.Position).Magnitude
-                                if dist < minDist then closest = enemy minDist = dist end
+                                if dist < minDist then
+                                    closest = enemy
+                                    minDist = dist
+                                end
                             end
                         end
                     end
@@ -150,24 +188,36 @@ task.spawn(function()
                             local desiredPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z)
                             local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
                             hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
-                            attackBrainrot(closest)
+
+                            -- Attack Brainrot
+                            local idObj = closest:FindFirstChild("ID")
+                            local idValue = idObj and idObj.Value or closest.Name
+                            local args = { { idValue } }
+                            pcall(function() attackRemote:FireServer(unpack(args)) end)
                         end
                     end
                 end
             end
         end
 
-        -- Auto Sell Cooldown
+        -- ===== Auto Sell =====
         if sellingEnabled then
             if currentCooldown <= 0 then
                 pcall(function() sellRemote:FireServer() end)
                 currentCooldown = cooldownTime
             else
-                currentCooldown -= 1
+                currentCooldown -= 0.03
             end
+            cooldownLabel.Text = "Sell Cooldown: " .. math.ceil(currentCooldown) .. "s"
+        else
+            cooldownLabel.Text = "Sell Cooldown: OFF"
         end
     end
 end)
+
+
+
+
 
 -- ===== TAB 3: Shop =====
 local ShopTab = Window:Tab({Title = "Shop", Icon = "shopping-cart"})
