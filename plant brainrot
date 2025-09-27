@@ -1,7 +1,14 @@
--- Load UI Library
+-- ====== Config System (Delta Compatible) ======
+getgenv().PlantBrainrotConfig = getgenv().PlantBrainrotConfig or {}
+local Config = getgenv().PlantBrainrotConfig
+
+local function saveConfig()
+    getgenv().PlantBrainrotConfig = Config
+end
+
+-- ===== Load UI Library =====
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/lib"))()
 
--- Create Main Window
 local Window = Library:Window({
     Title = "CHX Plant vs Brainrot",
     Desc = "discord.gg/zHMEUZrHZ6",
@@ -11,141 +18,110 @@ local Window = Library:Window({
     CloseUIButton = {Enabled = true, Text = "Close/Open"}
 })
 
--- Notification
 Window:Notify({
     Title = "Notification",
     Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord",
     Time = 4
 })
 
+-- ===== Services =====
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local buyEvent = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+
 -- ===== Main Tab =====
 local MainTab = Window:Tab({Title = "Main", Icon = "star"})
 MainTab:Section({Title = "Player Boosts"})
 
--- Services
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-
--- Speed Boost Slider
+-- Speed Boost
 MainTab:Slider({
     Title = "Speed Boost",
-    Desc = "Adjust WalkSpeed",
-    Min = 16,  -- ค่าเริ่มต้นปกติ
-    Max = 200, -- ค่าสูงสุด
-    Default = 16,
+    Min = 16, Max = 200,
+    Default = Config.SpeedBoost or 16,
     Callback = function(value)
+        Config.SpeedBoost = value
+        saveConfig()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
             LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
         end
     end
 })
 
--- Jump Power Slider
+-- Jump Power
 MainTab:Slider({
     Title = "Jump Power",
-    Desc = "Adjust Jump Power",
-    Min = 50,   -- ปกติประมาณ 50
-    Max = 500,  -- สูงสุด
-    Default = 50,
+    Min = 50, Max = 500,
+    Default = Config.JumpPower or 50,
     Callback = function(value)
+        Config.JumpPower = value
+        saveConfig()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
             LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
         end
     end
 })
 
-
 -- Boost FPS Clay Mode
 MainTab:Button({
     Title = "Boost FPS (Clay Mode)",
     Desc = "Remove textures & smooth everything like clay",
     Callback = function()
-        -- ตั้งค่า Quality ต่ำสุด
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
         pcall(function() game.Lighting.GlobalShadows = false end)
         pcall(function() game.Lighting.FogEnd = 9e9 end)
 
-        -- ปิด Effect ทั้งหมด
         for _, v in pairs(workspace:GetDescendants()) do
             if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") then
                 v.Enabled = false
             elseif v:IsA("Explosion") then
                 v.Visible = false
-            end
-        end
-
-        -- ลบ Texture/Decal ทั้งหมด (Block / ตัวละคร)
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("Decal") or v:IsA("Texture") then
+            elseif v:IsA("Decal") or v:IsA("Texture") then
                 v:Destroy()
             elseif v:IsA("SpecialMesh") then
-                -- ลบ Mesh ให้เป็น block ธรรมดา
                 v:Destroy()
-            end
-        end
-
-        -- เปลี่ยนวัสดุทั้งหมดให้เป็น SmoothPlastic (คล้ายดินน้ำมัน)
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("BasePart") then
+            elseif v:IsA("BasePart") then
                 v.Material = Enum.Material.SmoothPlastic
             end
         end
 
-        -- บังคับ FPS Cap (ถ้า executor รองรับ)
-        if setfpscap then
-            setfpscap(240)
-        end
-
-        print("✅ Clay Mode Applied (ทุกอย่างกลายเป็นดินน้ำมัน)")
+        if setfpscap then setfpscap(240) end
+        print("✅ Clay Mode Applied")
     end
 })
 
-
-
-
-
--- Tab
-local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
-
--- ====== Sell All Brainrot ======
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
-
-local sellingEnabled = false
+-- ===== Auto Farm Tab =====
+local FarmTab = Window:Tab({Title = "Auto Farm", Icon = "star"})
+local sellingEnabled = Config.AutoSell or false
 local cooldownTime = 20
 local currentCooldown = 0
+local cooldownLabel
 
-
--- Toggle to enable/disable auto selling
-Tab:Toggle({
+FarmTab:Toggle({
     Title = "Auto Sell Brainrot",
-    Desc = "If enabled, it will instantly sell, then sell again every 20 seconds",
-    Default = false,
+    Default = sellingEnabled,
     Callback = function(state)
         sellingEnabled = state
+        Config.AutoSell = state
+        saveConfig()
         if state then
-            -- Sell instantly when turning ON
-            pcall(function()
-                sellRemote:FireServer()
-            end)
+            pcall(function() sellRemote:FireServer() end)
             currentCooldown = cooldownTime
         else
-            cooldownLabel:Set("Sell Cooldown: OFF")
+            if cooldownLabel then cooldownLabel:Set("Sell Cooldown: OFF") end
         end
     end
 })
 
--- Loop for auto sell + update cooldown label
+cooldownLabel = FarmTab:Label("Sell Cooldown: OFF")
+
 task.spawn(function()
     while true do
         task.wait(1)
         if sellingEnabled then
             if currentCooldown <= 0 then
-                -- Fire Remote to sell
-                pcall(function()
-                    sellRemote:FireServer()
-                end)
+                pcall(function() sellRemote:FireServer() end)
                 currentCooldown = cooldownTime
             else
                 currentCooldown -= 1
@@ -155,150 +131,106 @@ task.spawn(function()
     end
 end)
 
+-- ===== Auto Buy Tab =====
+local BuyTab = Window:Tab({Title = "Auto Buy", Icon = "star"})
 
-
-
-
--- Tab
-local Tab = Window:Tab({Title = "Auto buy", Icon = "star"})
-
--- Remote Event
-local buyEvent = game:GetService("ReplicatedStorage"):WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
-
--- ================= Gears Shop =================
-Tab:Section({Title = "Gears Shop"})
-
--- Toggle Buy All Gears
-local buyAllGearsEnabled = false
-Tab:Toggle({
+-- Gears
+BuyTab:Section({Title = "Gears Shop"})
+local buyAllGearsEnabled = Config.BuyAllGears or false
+BuyTab:Toggle({
     Title = "Auto Buy All Gears",
-    Desc = "Automatically buy all gears",
-    Value = false,
+    Value = buyAllGearsEnabled,
     Callback = function(v)
         buyAllGearsEnabled = v
+        Config.BuyAllGears = v
+        saveConfig()
     end
 })
 
 local gearsItems = {
-    "Meme Lucky Egg",
-    "Secret Lucky Egg",
-    "Godly Lucky Egg",
-    "Speed Potion",
-    "Damage Potion",
-    "Lucky Potion",
-    "Banana Gun",
-    "Frost Grenade",
-    "Carrot Launcher",
-    "Water Bucket",
-    "Frost Blower",
+    "Meme Lucky Egg","Secret Lucky Egg","Godly Lucky Egg","Speed Potion",
+    "Damage Potion","Lucky Potion","Banana Gun","Frost Grenade",
+    "Carrot Launcher","Water Bucket","Frost Blower",
 }
 
-local autoBuyGears = {}
-
--- Toggle ของแต่ละ Gears
+local autoBuyGears = Config.AutoBuyGears or {}
 for _, gearName in ipairs(gearsItems) do
-    autoBuyGears[gearName] = false
-    Tab:Toggle({
+    if autoBuyGears[gearName] == nil then autoBuyGears[gearName] = false end
+    BuyTab:Toggle({
         Title = gearName,
-        Desc = "Auto buy "..gearName,
-        Value = false,
+        Value = autoBuyGears[gearName],
         Callback = function(v)
             autoBuyGears[gearName] = v
+            Config.AutoBuyGears = autoBuyGears
+            saveConfig()
         end
     })
 end
 
-
-
-
--- ================= Seeds Shop =================
-Tab:Section({Title = "Seeds Shop"})
-
--- Toggle Buy All Seeds
-local buyAllSeedsEnabled = false
-Tab:Toggle({
+-- Seeds
+BuyTab:Section({Title = "Seeds Shop"})
+local buyAllSeedsEnabled = Config.BuyAllSeeds or false
+BuyTab:Toggle({
     Title = "Auto Buy All Seeds",
-    Desc = "Automatically buy all seeds",
-    Value = false,
+    Value = buyAllSeedsEnabled,
     Callback = function(v)
         buyAllSeedsEnabled = v
+        Config.BuyAllSeeds = v
+        saveConfig()
     end
 })
 
 local seedItems = {
-    "Cactus Seed",
-    "Strawberry Seed",
-    "Pumpkin Seed",
-    "Sunflower Seed",
-    "Dragon Fruit Seed",
-    "Eggplant Seed",
-    "Watermelon Seed",
-    "Cocotank Seed",
-    "Carnivorous Plant Seed",
-    "Mr Carrot Seed",
-    "Tomatrio Seed",
+    "Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Seed",
+    "Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Cocotank Seed",
+    "Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed",
 }
 
-local autoBuySeeds = {}
-
--- Toggle ของแต่ละ Seed
+local autoBuySeeds = Config.AutoBuySeeds or {}
 for _, seedName in ipairs(seedItems) do
-    autoBuySeeds[seedName] = false
-    Tab:Toggle({
+    if autoBuySeeds[seedName] == nil then autoBuySeeds[seedName] = false end
+    BuyTab:Toggle({
         Title = seedName,
-        Desc = "Auto buy "..seedName,
-        Value = false,
+        Value = autoBuySeeds[seedName],
         Callback = function(v)
             autoBuySeeds[seedName] = v
+            Config.AutoBuySeeds = autoBuySeeds
+            saveConfig()
         end
     })
 end
 
-
--- ================= Loop Auto Buy =================
+-- Loop Auto Buy
 task.spawn(function()
     while true do
         task.wait(0.1)
 
-        -- Auto Buy Gears
         if buyAllGearsEnabled then
             for _, gearName in ipairs(gearsItems) do
-                pcall(function()
-                    buyEvent:FireServer({gearName, " "})
-                end)
+                pcall(function() buyEvent:FireServer({gearName," "}) end)
                 task.wait(0.5)
             end
         else
             for gearName, isEnabled in pairs(autoBuyGears) do
                 if isEnabled then
-                    pcall(function()
-                        buyEvent:FireServer({gearName, " "})
-                    end)
+                    pcall(function() buyEvent:FireServer({gearName," "}) end)
                     task.wait(0.5)
                 end
             end
         end
 
-        -- Auto Buy Seeds
         if buyAllSeedsEnabled then
             for _, seedName in ipairs(seedItems) do
-                pcall(function()
-                    buyEvent:FireServer({seedName, "\a"})
-                end)
+                pcall(function() buyEvent:FireServer({seedName,"\a"}) end)
                 task.wait(0.5)
             end
         else
             for seedName, isEnabled in pairs(autoBuySeeds) do
                 if isEnabled then
-                    pcall(function()
-                        buyEvent:FireServer({seedName, "\a"})
-                    end)
+                    pcall(function() buyEvent:FireServer({seedName,"\a"}) end)
                     task.wait(0.5)
                 end
             end
         end
-
     end
 end)
-
-
