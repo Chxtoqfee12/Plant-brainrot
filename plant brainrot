@@ -181,8 +181,131 @@ MainTab:Toggle({
 })
 
 
+
+
+
+
 -- ===== Auto Farm Tab =====
 local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
+
+local player = game.Players.LocalPlayer
+local plotCount = 6 -- workspace.Plots.1..6
+local refreshInterval = 2 -- วินาที
+
+local espEnabled = false
+
+-- ฟังก์ชันดึงชื่อจาก ContentText
+local function getPlotOwners()
+    local plotOwners = {} -- [plotIndex] = {name, plotModel}
+    for i = 1, plotCount do
+        local plot = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild(tostring(i))
+        if plot then
+            local sign = plot:FindFirstChild("PlayerSign")
+            if sign and sign:FindFirstChild("BillboardGui") then
+                local gui = sign.BillboardGui
+                local label = gui:FindFirstChildOfClass("TextLabel") or gui:FindFirstChild("TextLabel")
+                if label then
+                    local content = label:GetAttribute("ContentText") or label.Text or "?"
+                    plotOwners[i] = {name = content, plot = plot}
+                end
+            end
+        end
+    end
+    return plotOwners
+end
+
+-- ฟังก์ชันอัปเดต ESP + ชื่อสีแดง
+local function updateESP()
+    local owners = getPlotOwners()
+    for i = 1, plotCount do
+        local info = owners[i]
+        if info and info.plot then
+            local plot = info.plot
+            local playerName = info.name
+
+            -- ลบ ESP / TextLabel เดิมก่อน
+            for _, part in ipairs(plot:GetDescendants()) do
+                local esp = part:FindFirstChild("ESP")
+                if esp then esp:Destroy() end
+                local txt = part:FindFirstChild("ESPName")
+                if txt then txt:Destroy() end
+            end
+
+            if playerName == player.Name then
+                -- สร้าง SelectionBox (ESP สีเขียว)
+                for _, part in ipairs(plot:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        local selection = Instance.new("SelectionBox")
+                        selection.Name = "ESP"
+                        selection.Adornee = part
+                        selection.LineThickness = 0.05
+                        selection.Color3 = Color3.fromRGB(0, 255, 0)
+                        selection.Parent = part
+                    end
+                end
+
+                -- สร้าง BillboardGui แสดงชื่อผู้เล่นสีแดง
+                local rootPart = plot:FindFirstChildWhichIsA("BasePart")
+                if rootPart then
+                    local billboard = Instance.new("BillboardGui")
+                    billboard.Name = "ESPName"
+                    billboard.Adornee = rootPart
+                    billboard.Size = UDim2.new(0, 200, 0, 50)
+                    billboard.AlwaysOnTop = true
+                    billboard.Parent = rootPart
+
+                    local txtLabel = Instance.new("TextLabel")
+                    txtLabel.Size = UDim2.new(1,0,1,0)
+                    txtLabel.BackgroundTransparency = 1
+                    txtLabel.Text = playerName
+                    txtLabel.TextColor3 = Color3.fromRGB(255,0,0) -- สีแดง
+                    txtLabel.TextScaled = true
+                    txtLabel.Font = Enum.Font.SourceSansBold
+                    txtLabel.Parent = billboard
+                end
+            end
+        end
+    end
+end
+
+-- ====== ปุ่มเปิด/ปิด ESP ======
+Tab:Toggle({
+    Title = "ESP เช็คฐาน",
+    Desc = "Highlight และแสดงชื่อฐานของเรา",
+    Default = false,
+    Callback = function(state)
+        espEnabled = state
+    end
+})
+
+-- ====== Loop อัปเดต ESP ======
+task.spawn(function()
+    while true do
+        task.wait(refreshInterval)
+        if espEnabled then
+            updateESP()
+        else
+            -- ลบ ESP และ Billboard ชื่อทุกอัน
+            for i = 1, plotCount do
+                local plot = workspace.Plots:FindFirstChild(tostring(i))
+                if plot then
+                    for _, part in ipairs(plot:GetDescendants()) do
+                        local esp = part:FindFirstChild("ESP")
+                        if esp then esp:Destroy() end
+                        local txt = part:FindFirstChild("ESPName")
+                        if txt then txt:Destroy() end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+
+
 
 -- ====== Sell All Brainrot ======
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
