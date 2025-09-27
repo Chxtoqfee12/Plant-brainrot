@@ -185,121 +185,166 @@ MainTab:Toggle({
 
 
 
+
+
+
+
 -- ===== Auto Farm Tab =====
 local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
 
-local player = game.Players.LocalPlayer
-local plotCount = 6 -- workspace.Plots.1..6
-local refreshInterval = 2 -- วินาที
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
 
-local espEnabled = false
+local autoAttackEnabled = false
+local followDistance = 0        -- ระยะด้านหลัง Brainrot = 0 เพราะเราจะลอยตรงเท้า
+local lerpSpeed = 0.5           -- ความเร็วลื่น
+local floatHeight = 3           -- สูงจากพื้นเล็กน้อย (ปรับตามตัวเรา)
+local sideCheckDistance = 50    -- ระยะเช็คด้านข้างตัวเรา
+local forwardCheckDistance = 100 -- ระยะเช็คด้านหน้า/หลัง Brainrot
+local target = nil
 
--- ฟังก์ชันดึงชื่อจาก ContentText
-local function getPlotOwners()
-    local plotOwners = {} -- [plotIndex] = {name, plotModel}
-    for i = 1, plotCount do
-        local plot = workspace:FindFirstChild("Plots") and workspace.Plots:FindFirstChild(tostring(i))
-        if plot then
-            local sign = plot:FindFirstChild("PlayerSign")
-            if sign and sign:FindFirstChild("BillboardGui") then
-                local gui = sign.BillboardGui
-                local label = gui:FindFirstChildOfClass("TextLabel") or gui:FindFirstChild("TextLabel")
-                if label then
-                    local content = label:GetAttribute("ContentText") or label.Text or "?"
-                    plotOwners[i] = {name = content, plot = plot}
-                end
-            end
-        end
-    end
-    return plotOwners
-end
+local espFolder = Instance.new("Folder")
+espFolder.Name = "BrainrotESP"
+espFolder.Parent = game:GetService("CoreGui")
 
--- ฟังก์ชันอัปเดต ESP + ชื่อสีแดง
-local function updateESP()
-    local owners = getPlotOwners()
-    for i = 1, plotCount do
-        local info = owners[i]
-        if info and info.plot then
-            local plot = info.plot
-            local playerName = info.name
-
-            -- ลบ ESP / TextLabel เดิมก่อน
-            for _, part in ipairs(plot:GetDescendants()) do
-                local esp = part:FindFirstChild("ESP")
-                if esp then esp:Destroy() end
-                local txt = part:FindFirstChild("ESPName")
-                if txt then txt:Destroy() end
-            end
-
-            if playerName == player.Name then
-                -- สร้าง SelectionBox (ESP สีเขียว)
-                for _, part in ipairs(plot:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        local selection = Instance.new("SelectionBox")
-                        selection.Name = "ESP"
-                        selection.Adornee = part
-                        selection.LineThickness = 0.05
-                        selection.Color3 = Color3.fromRGB(0, 255, 0)
-                        selection.Parent = part
-                    end
-                end
-
-                -- สร้าง BillboardGui แสดงชื่อผู้เล่นสีแดง
-                local rootPart = plot:FindFirstChildWhichIsA("BasePart")
-                if rootPart then
-                    local billboard = Instance.new("BillboardGui")
-                    billboard.Name = "ESPName"
-                    billboard.Adornee = rootPart
-                    billboard.Size = UDim2.new(0, 200, 0, 50)
-                    billboard.AlwaysOnTop = true
-                    billboard.Parent = rootPart
-
-                    local txtLabel = Instance.new("TextLabel")
-                    txtLabel.Size = UDim2.new(1,0,1,0)
-                    txtLabel.BackgroundTransparency = 1
-                    txtLabel.Text = playerName
-                    txtLabel.TextColor3 = Color3.fromRGB(255,0,0) -- สีแดง
-                    txtLabel.TextScaled = true
-                    txtLabel.Font = Enum.Font.SourceSansBold
-                    txtLabel.Parent = billboard
-                end
-            end
-        end
-    end
-end
-
--- ====== ปุ่มเปิด/ปิด ESP ======
+-- Toggle ฟังชัน Auto Attack
 Tab:Toggle({
-    Title = "ESP เช็คฐาน",
-    Desc = "Highlight และแสดงชื่อฐานของเรา",
+    Title = "Attach & Spam Attack Brainrot",
+    Desc = "Warp to closest Brainrot and spam attack + show ESP",
     Default = false,
     Callback = function(state)
-        espEnabled = state
+        autoAttackEnabled = state
+        -- เปิด/ปิด ESP
+        for _, gui in ipairs(espFolder:GetChildren()) do
+            gui.Enabled = state
+        end
     end
 })
 
--- ====== Loop อัปเดต ESP ======
+-- Get all Brainrots (ทุกตัว)
+local function getBrainrots()
+    local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
+    if not folder then return {} end
+
+    local brainrots = {}
+    for _, v in ipairs(folder:GetChildren()) do
+        if v:IsA("Model") then
+            table.insert(brainrots, v)
+        end
+    end
+    return brainrots
+end
+
+-- Attack function
+local function attackBrainrot(brainrot)
+    if not brainrot or not brainrot.Parent then return end
+    local args = { { brainrot.Name } }
+    pcall(function()
+        attackRemote:FireServer(unpack(args))
+    end)
+end
+
+-- สร้าง ESP ให้ Brainrot ทุกตัว
+local function createESP(brainrot)
+    if not brainrot or not brainrot.Parent then return end
+    if espFolder:FindFirstChild(brainrot.Name) then return end
+
+    local part = brainrot:FindFirstChild("HumanoidRootPart") or brainrot:FindFirstChildWhichIsA("BasePart")
+    if not part then return end
+
+    local highlight = Instance.new("Highlight")
+    highlight.Name = brainrot.Name
+    highlight.Adornee = part
+    highlight.FillColor = Color3.fromRGB(255,0,0)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.fromRGB(255,255,255)
+    highlight.OutlineTransparency = 0
+    highlight.Enabled = autoAttackEnabled
+    highlight.Parent = espFolder
+end
+
+-- ====================== Follow & Attack Loop ======================
 task.spawn(function()
     while true do
-        task.wait(refreshInterval)
-        if espEnabled then
-            updateESP()
-        else
-            -- ลบ ESP และ Billboard ชื่อทุกอัน
-            for i = 1, plotCount do
-                local plot = workspace.Plots:FindFirstChild(tostring(i))
-                if plot then
-                    for _, part in ipairs(plot:GetDescendants()) do
-                        local esp = part:FindFirstChild("ESP")
-                        if esp then esp:Destroy() end
-                        local txt = part:FindFirstChild("ESPName")
-                        if txt then txt:Destroy() end
+        task.wait(0.03)
+        if autoAttackEnabled and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if hrp and humanoid then
+                humanoid.PlatformStand = false
+                humanoid.Sit = false
+                hrp.Velocity = Vector3.zero
+
+                local brainrots = getBrainrots()
+
+                -- สร้าง ESP ทุกตัว
+                for _, enemy in ipairs(brainrots) do
+                    createESP(enemy)
+                end
+
+                -- หา Brainrot ใกล้ตัวเราที่สุด
+                local closest, minDist = nil, math.huge
+                for _, enemy in ipairs(brainrots) do
+                    if enemy and enemy.Parent then
+                        local part = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildWhichIsA("BasePart")
+                        if part then
+                            local offset = part.Position - hrp.Position
+                            local sideDist = Vector3.new(offset.X, 0, offset.Z).Magnitude
+                            local forwardDist = offset.Magnitude
+                            if sideDist <= sideCheckDistance and forwardDist <= forwardCheckDistance then
+                                if forwardDist < minDist then
+                                    closest = enemy
+                                    minDist = forwardDist
+                                end
+                            end
+                        end
+                    end
+                end
+                target = closest
+
+                if target and target.Parent then
+                    local targetPart = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChildWhichIsA("BasePart")
+                    if targetPart then
+                        -- ลอยตรงเท้า Brainrot (ตัวเราอยู่ครึ่งใต้ดิน)
+                        local footHeight = 0.5
+                        local targetPos = targetPart.Position
+                        local desiredPos = Vector3.new(targetPos.X, targetPos.Y - floatHeight + footHeight, targetPos.Z)
+                        local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
+
+                        -- หันหน้าไปตรง Brainrot
+                        hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPos.X, newPos.Y, targetPos.Z))
+
+                        -- Spam attack
+                        attackBrainrot(target)
                     end
                 end
             end
         end
     end
 end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
