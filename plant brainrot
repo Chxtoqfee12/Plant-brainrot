@@ -23,7 +23,7 @@ local Config = loadConfig()
 -- ===== Load UI Library =====
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/lib"))()
 local Window = Library:Window({
-    Title = "CHX Plant vs Brainrot",
+    Title = "CHX Plant vs Brainrot V1.1",
     Desc = "discord.gg/zHMEUZrHZ6",
     Icon = 105059922903197,
     Theme = "Dark",
@@ -31,7 +31,7 @@ local Window = Library:Window({
     CloseUIButton = {Enabled = true, Text = "Close/Open"}
 })
 
-Window:Notify({Title = "Notification", Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord", Time = 4})
+Window:Notify({Title = "Notification", Desc = "สคริปแมพ 'Plant vs Brainrot' V1.1 แจ้งบัคที่ Discord", Time = 4})
 
 -- ===== Services =====
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -65,10 +65,24 @@ local function attackBrainrot(brainrot)
     pcall(function() attackRemote:FireServer({{brainrot.Name}}) end)
 end
 
--- ===== TAB 1: Main =====
-local MainTab = Window:Tab({Title = "Main", Icon = "home"})
-MainTab:Label({Title = "Welcome, " .. player.Name})
 
+
+-- ===== TAB 1: Main =====
+local MainTab = Window:Tab({Title = "Main", Icon = "star"})
+
+MainTab:Label({Title = "👋 Welcome to Script, " .. player.Name})
+MainTab:Label({Title = "🐞 If you find a bug or want to report it, please report it on Discord."})
+
+-- Code Display
+local CodeBlock = MainTab:Code({
+    Title = "🔗 Discord",
+    Code = "https://discord.gg/zHMEUZrHZ6"
+})
+
+-- Simulate update
+task.delay(5, function()
+    CodeBlock:SetCode("https://discord.gg/zHMEUZrHZ6")
+end)
 
 
 
@@ -110,7 +124,7 @@ local function getBrainrots()
 end
 
 -- ====== UI Tab Farm ======
-local FarmTab = Window:Tab({Title = "Farm", Icon = "star"})
+local FarmTab = Window:Tab({Title = "Farm", Icon = "wrench"})
 
 -- Save Home Button
 FarmTab:Button({
