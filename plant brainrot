@@ -1,36 +1,27 @@
 -- Place ID ของ Plants Vs Brainrots
 local PLACE_ID = 127742093697776
 
--- เช็คก่อนว่ากำลังอยู่ในเกมนี้หรือไม่
-if game.PlaceId ~= PLACE_ID then
-    return -- ออกจากสคริปต์ ไม่โหลด UI
-end
+if game.PlaceId ~= PLACE_ID then return end -- เช็คว่าอยู่ในแมพ
 
 -- ====== Config Save System ======
 local HttpService = game:GetService("HttpService")
 local configFile = "PlantBrainrotConfig.json"
 
--- โหลด config ถ้ามี
 local function loadConfig()
     if isfile(configFile) then
-        local data = readfile(configFile)
-        return HttpService:JSONDecode(data)
+        return HttpService:JSONDecode(readfile(configFile))
     end
     return {}
 end
 
--- เซฟ config
 local function saveConfig(cfg)
     writefile(configFile, HttpService:JSONEncode(cfg))
 end
 
 local Config = loadConfig()
 
-
 -- ===== Load UI Library =====
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/lib"))()
-
--- Create Main Window
 local Window = Library:Window({
     Title = "CHX Plant vs Brainrot",
     Desc = "discord.gg/zHMEUZrHZ6",
@@ -40,12 +31,7 @@ local Window = Library:Window({
     CloseUIButton = {Enabled = true, Text = "Close/Open"}
 })
 
--- Notification
-Window:Notify({
-    Title = "Notification",
-    Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord",
-    Time = 4
-})
+Window:Notify({Title = "Notification", Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord", Time = 4})
 
 -- ===== Services =====
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -53,55 +39,60 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
+local buyEvent = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
 
 -- ===== Variables =====
-local autoAttackEnabled = false
-local followDistance = 0
-local lerpSpeed = 0.5
-local floatHeight = 3
-
-local homeSaved = false
+local autoAttackEnabled, sellingEnabled = false, false
+local followDistance, lerpSpeed, floatHeight = 0, 0.5, 3
+local homeSaved, hasWarpedToHome, startFarming = false, false, false
 local homePosition = nil
-local hasWarpedToHome = false
-local startFarming = false
+local cooldownTime, currentCooldown = 20, 0
 
--- ===== UI Tab =====
-local Tab = Window:Tab({
-    Title = "Main",
-    Icon = "home" -- ไอคอนรูปบ้าน
-})
+-- ===== Functions =====
+local function getBrainrots()
+    local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
+    if not folder then return {} end
+    local brainrots = {}
+    for _, v in ipairs(folder:GetChildren()) do
+        if v:IsA("Model") then table.insert(brainrots, v) end
+    end
+    return brainrots
+end
 
--- Save Home Button
-Tab:Button({
+local function attackBrainrot(brainrot)
+    if not brainrot or not brainrot.Parent then return end
+    pcall(function() attackRemote:FireServer({{brainrot.Name}}) end)
+end
+
+-- ===== TAB 1: Main =====
+local MainTab = Window:Tab({Title = "Main", Icon = "home"})
+MainTab:Label({Title = "Welcome, " .. player.Name})
+
+-- ===== TAB 2: Farm =====
+local FarmTab = Window:Tab({Title = "Farm", Icon = "star"})
+
+FarmTab:Button({
     Title = "Save Home",
     Desc = "Click Garden to warp there and press SAVE first!",
     Callback = function()
         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             homePosition = player.Character.HumanoidRootPart.Position
             homeSaved = true
-            Window:Notify({
-                Title = "Saved!",
-                Desc = "Home position saved successfully.",
-                Time = 3
-            })
+            Window:Notify({Title="Saved!", Desc="Home position saved successfully.", Time=3})
         end
     end
 })
 
--- Toggle Auto Brainrot
-Tab:Toggle({
+FarmTab:Toggle({
     Title = "Auto Attack Brainrot",
     Desc = "You must press SAVE HOME first before using Auto Attack Brainrot!",
     Default = false,
     Callback = function(state)
         autoAttackEnabled = state
         if autoAttackEnabled and not homeSaved then
-            Window:Notify({
-                Title = "Warning",
-                Desc = "Please SAVE your home first!",
-                Time = 3
-            })
-            autoAttackEnabled = false -- block auto attack
+            Window:Notify({Title="Warning", Desc="Please SAVE your home first!", Time=3})
+            autoAttackEnabled = false
         else
             startFarming = false
             hasWarpedToHome = false
@@ -109,30 +100,20 @@ Tab:Toggle({
     end
 })
 
-
--- ===== Functions =====
-local function getBrainrots()
-    local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
-    if not folder then return {} end
-
-    local brainrots = {}
-    for _, v in ipairs(folder:GetChildren()) do
-        if v:IsA("Model") then
-            table.insert(brainrots, v)
+FarmTab:Toggle({
+    Title = "Auto Sell Brainrot",
+    Desc = "Automatically sell Brainrots every 20 seconds",
+    Default = false,
+    Callback = function(state)
+        sellingEnabled = state
+        if state then
+            pcall(function() sellRemote:FireServer() end)
+            currentCooldown = cooldownTime
         end
     end
-    return brainrots
-end
+})
 
-local function attackBrainrot(brainrot)
-    if not brainrot or not brainrot.Parent then return end
-    local args = { { brainrot.Name } }
-    pcall(function()
-        attackRemote:FireServer(unpack(args))
-    end)
-end
-
--- ===== Loop Auto Brainrot =====
+-- Loop Auto Attack + Sell
 task.spawn(function()
     while true do
         task.wait(0.03)
@@ -140,11 +121,9 @@ task.spawn(function()
             local hrp = player.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = player.Character:FindFirstChild("Humanoid")
             if hrp and humanoid then
-                humanoid.PlatformStand = false
-                humanoid.Sit = false
+                humanoid.PlatformStand, humanoid.Sit = false, false
                 hrp.Velocity = Vector3.zero
 
-                -- Warp to home first
                 if not hasWarpedToHome and homeSaved and homePosition then
                     hrp.CFrame = CFrame.new(homePosition)
                     hasWarpedToHome = true
@@ -152,169 +131,82 @@ task.spawn(function()
                     startFarming = true
                 end
 
-                -- Start farming Brainrots
                 if startFarming then
                     local brainrots = getBrainrots()
-
                     local closest, minDist = nil, math.huge
                     for _, enemy in ipairs(brainrots) do
                         if enemy and enemy.Parent then
                             local part = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildWhichIsA("BasePart")
                             if part then
                                 local dist = (part.Position - hrp.Position).Magnitude
-                                if dist < minDist then
-                                    closest = enemy
-                                    minDist = dist
-                                end
+                                if dist < minDist then closest = enemy minDist = dist end
                             end
                         end
                     end
 
-                    local target = closest
-                    if target and target.Parent then
-                        local targetPart = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChildWhichIsA("BasePart")
+                    if closest and closest.Parent then
+                        local targetPart = closest:FindFirstChild("HumanoidRootPart") or closest:FindFirstChildWhichIsA("BasePart")
                         if targetPart then
                             local desiredPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z)
                             local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
                             hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
-                            attackBrainrot(target)
+                            attackBrainrot(closest)
                         end
                     end
                 end
             end
         end
-    end
-end)
 
-
--- ====== Sell All Brainrot ======
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
-
-local sellingEnabled = false
-local cooldownTime = 20
-local currentCooldown = 0
-
--- Toggle to enable/disable auto selling
-Tab:Toggle({
-    Title = "Auto Sell Brainrot",
-    Desc = "If enabled, it will instantly sell, then sell again every 20 seconds",
-    Default = false,
-    Callback = function(state)
-        sellingEnabled = state
-
-        if state then
-            -- Sell instantly when turning ON
-            pcall(function()
-                sellRemote:FireServer()
-            end)
-            currentCooldown = cooldownTime
-        else
-            cooldownLabel:Set("Sell Cooldown: OFF")
-        end
-    end
-})
-
--- Loop for auto sell + update cooldown label
-task.spawn(function()
-    while true do
-        task.wait(1)
-
+        -- Auto Sell Cooldown
         if sellingEnabled then
             if currentCooldown <= 0 then
-                -- Fire Remote to sell
-                pcall(function()
-                    sellRemote:FireServer()
-                end)
+                pcall(function() sellRemote:FireServer() end)
                 currentCooldown = cooldownTime
             else
                 currentCooldown -= 1
             end
-
-            cooldownLabel:Set("Sell Cooldown: " .. tostring(currentCooldown) .. "s")
         end
     end
 end)
 
+-- ===== TAB 3: Shop =====
+local ShopTab = Window:Tab({Title = "Shop", Icon = "shopping-cart"})
 
-
-
-
-
-
-
-
-
-
-
--- ===== Auto Buy Tab =====
-local BuyTab = Window:Tab({
-    Title = "Shop",
-    Icon = "shopping-cart" -- ไอคอนรถเข็น
-})
-
--- Gears
-BuyTab:Section({Title = "Gears Shop"})
+-- Gears Section
+ShopTab:Section({Title="Gears Shop"})
 local buyAllGearsEnabled = Config.BuyAllGears or false
-BuyTab:Toggle({
+ShopTab:Toggle({
     Title = "Auto Buy All Gears",
     Value = buyAllGearsEnabled,
-    Callback = function(v)
-        buyAllGearsEnabled = v
-        Config.BuyAllGears = v
-        saveConfig(Config)
-    end
+    Callback = function(v) buyAllGearsEnabled=v Config.BuyAllGears=v saveConfig(Config) end
 })
-
-local gearsItems = {
-    "Water Bucket","Frost Grenade",
-    "Banana Gun","Frost Blower","Carrot Launcher",
-}
-
+local gearsItems = {"Water Bucket","Frost Grenade","Banana Gun","Frost Blower","Carrot Launcher"}
 local autoBuyGears = Config.AutoBuyGears or {}
 for _, gearName in ipairs(gearsItems) do
-    if autoBuyGears[gearName] == nil then autoBuyGears[gearName] = false end
-    BuyTab:Toggle({
-        Title = gearName,
-        Value = autoBuyGears[gearName],
-        Callback = function(v)
-            autoBuyGears[gearName] = v
-            Config.AutoBuyGears = autoBuyGears
-            saveConfig(Config)
-        end
+    if autoBuyGears[gearName]==nil then autoBuyGears[gearName]=false end
+    ShopTab:Toggle({
+        Title=gearName,
+        Value=autoBuyGears[gearName],
+        Callback=function(v) autoBuyGears[gearName]=v Config.AutoBuyGears=autoBuyGears saveConfig(Config) end
     })
 end
 
--- Seeds
-BuyTab:Section({Title = "Seeds Shop"})
+-- Seeds Section
+ShopTab:Section({Title="Seeds Shop"})
 local buyAllSeedsEnabled = Config.BuyAllSeeds or false
-BuyTab:Toggle({
+ShopTab:Toggle({
     Title = "Auto Buy All Seeds",
     Value = buyAllSeedsEnabled,
-    Callback = function(v)
-        buyAllSeedsEnabled = v
-        Config.BuyAllSeeds = v
-        saveConfig(Config)
-    end
+    Callback = function(v) buyAllSeedsEnabled=v Config.BuyAllSeeds=v saveConfig(Config) end
 })
-
-local seedItems = {
-    "Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Seed",
-    "Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Grape Seed","Cocotank Seed",
-    "Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed","Shroombino Seed",
-}
-
+local seedItems = {"Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Seed","Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Grape Seed","Cocotank Seed","Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed","Shroombino Seed"}
 local autoBuySeeds = Config.AutoBuySeeds or {}
 for _, seedName in ipairs(seedItems) do
-    if autoBuySeeds[seedName] == nil then autoBuySeeds[seedName] = false end
-    BuyTab:Toggle({
-        Title = seedName,
-        Value = autoBuySeeds[seedName],
-        Callback = function(v)
-            autoBuySeeds[seedName] = v
-            Config.AutoBuySeeds = autoBuySeeds
-            saveConfig(Config)
-        end
+    if autoBuySeeds[seedName]==nil then autoBuySeeds[seedName]=false end
+    ShopTab:Toggle({
+        Title=seedName,
+        Value=autoBuySeeds[seedName],
+        Callback=function(v) autoBuySeeds[seedName]=v Config.AutoBuySeeds=autoBuySeeds saveConfig(Config) end
     })
 end
 
@@ -322,183 +214,61 @@ end
 task.spawn(function()
     while true do
         task.wait(0.1)
-
-        -- ===== Auto Buy Gears =====
         if buyAllGearsEnabled then
-            for _, gearName in ipairs(gearsItems) do
-                pcall(function()
-                    buyEvent:FireServer({gearName, "\026"})
-                end)
-                task.wait(0.5)
-            end
+            for _, gearName in ipairs(gearsItems) do pcall(function() buyEvent:FireServer({gearName,"\026"}) end) task.wait(0.5) end
         else
-            for gearName, isEnabled in pairs(autoBuyGears) do
-                if isEnabled then
-                    pcall(function()
-                        buyEvent:FireServer({gearName, "\026"})
-                    end)
-                    task.wait(0.5)
-                end
-            end
+            for gearName,isEnabled in pairs(autoBuyGears) do if isEnabled then pcall(function() buyEvent:FireServer({gearName,"\026"}) end) task.wait(0.5) end end
         end
-
         if buyAllSeedsEnabled then
-            for _, seedName in ipairs(seedItems) do
-                pcall(function() buyEvent:FireServer({seedName,"\b"}) end)
-                task.wait(0.5)
-            end
+            for _, seedName in ipairs(seedItems) do pcall(function() buyEvent:FireServer({seedName,"\b"}) end) task.wait(0.5) end
         else
-            for seedName, isEnabled in pairs(autoBuySeeds) do
-                if isEnabled then
-                    pcall(function() buyEvent:FireServer({seedName,"\b"}) end)
-                    task.wait(0.5)
-                end
-            end
+            for seedName,isEnabled in pairs(autoBuySeeds) do if isEnabled then pcall(function() buyEvent:FireServer({seedName,"\b"}) end) task.wait(0.5) end end
         end
     end
 end)
 
+-- ===== TAB 4: Misc =====
+local MiscTab = Window:Tab({Title = "Misc", Icon = "settings"})
+MiscTab:Section({Title="Player"})
+MiscTab:Slider({Title="Speed Boost", Desc="Adjust WalkSpeed", Min=16, Max=200, Default=Config.SpeedBoost or 16, Callback=function(v) Config.SpeedBoost=v saveConfig(Config) if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed=v end end})
+MiscTab:Slider({Title="Jump Power", Desc="Adjust Jump Power", Min=50, Max=500, Default=Config.JumpPower or 50, Callback=function(v) Config.JumpPower=v saveConfig(Config) if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then player.Character:FindFirstChildOfClass("Humanoid").JumpPower=v end end})
 
-
-
-
-
-
--- ===== Services =====
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local buyEvent = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
-local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
-
--- ===== Misc Tab =====
-local MainTab = Window:Tab({
-    Title = "Misc",
-    Icon = "settings" -- ไอคอนเฟือง
-})
-MainTab:Section({Title = "Player"})
-
--- Speed Boost Slider
-MainTab:Slider({
-    Title = "Speed Boost",
-    Desc = "Adjust WalkSpeed",
-    Min = 16,
-    Max = 200,
-    Default = Config.SpeedBoost or 16,
-    Callback = function(value)
-        Config.SpeedBoost = value
-        saveConfig(Config)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
-        end
-    end
-})
-
--- Jump Power Slider
-MainTab:Slider({
-    Title = "Jump Power",
-    Desc = "Adjust Jump Power",
-    Min = 50,
-    Max = 500,
-    Default = Config.JumpPower or 50,
-    Callback = function(value)
-        Config.JumpPower = value
-        saveConfig(Config)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
-        end
-    end
-})
-
-
-MainTab:Section({Title = "Graphics"})
-
--- ===== Boost FPS Clay Mode Toggle with Restore =====
-local clayModeEnabled = false
-
--- ตัวแปรสำรองค่าเดิม
-local backup = {
-    QualityLevel = settings().Rendering.QualityLevel,
-    GlobalShadows = game.Lighting.GlobalShadows,
-    FogEnd = game.Lighting.FogEnd,
-    FPSCap = (setfpscap and 60 or nil),
-    ParticleStates = {},
-    ExplosionStates = {},
-    BasePartMaterials = {},
-    MeshAndDecalParents = {}
-}
-
-MainTab:Toggle({
-    Title = "Boost FPS (Clay Mode)",
-    Desc = "Remove textures & smooth everything like clay",
-    Value = false,
-    Callback = function(state)
-        clayModeEnabled = state
-
+-- ===== FPS Clay Mode =====
+local clayModeEnabled=false
+local backup={QualityLevel=settings().Rendering.QualityLevel, GlobalShadows=game.Lighting.GlobalShadows, FogEnd=game.Lighting.FogEnd, FPSCap=(setfpscap and 60 or nil), ParticleStates={}, ExplosionStates={}, BasePartMaterials={}, MeshAndDecalParents={}}
+MiscTab:Toggle({
+    Title="Boost FPS (Clay Mode)",
+    Desc="Remove textures & smooth everything like clay",
+    Value=false,
+    Callback=function(state)
+        clayModeEnabled=state
         if clayModeEnabled then
-            -- Backup ก่อน
-            backup.QualityLevel = settings().Rendering.QualityLevel
-            backup.GlobalShadows = game.Lighting.GlobalShadows
-            backup.FogEnd = game.Lighting.FogEnd
-            if setfpscap then
-                backup.FPSCap = 60 -- สมมุติว่าปกติ FPS 60
-                setfpscap(240)
+            backup.QualityLevel=settings().Rendering.QualityLevel
+            backup.GlobalShadows=game.Lighting.GlobalShadows
+            backup.FogEnd=game.Lighting.FogEnd
+            if setfpscap then backup.FPSCap=60 setfpscap(240) end
+            for _,v in pairs(workspace:GetDescendants()) do
+                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") then backup.ParticleStates[v]=v.Enabled v.Enabled=false
+                elseif v:IsA("Explosion") then backup.ExplosionStates[v]=v.Visible v.Visible=false
+                elseif v:IsA("BasePart") then backup.BasePartMaterials[v]=v.Material v.Material=Enum.Material.SmoothPlastic
+                elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SpecialMesh") then backup.MeshAndDecalParents[v]={Parent=v.Parent,ClassName=v.ClassName,Name=v.Name} v:Destroy() end
             end
-
-            -- Backup สถานะของ Particle, Trail, Fire, Smoke, Explosion
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") then
-                    backup.ParticleStates[v] = v.Enabled
-                    v.Enabled = false
-                elseif v:IsA("Explosion") then
-                    backup.ExplosionStates[v] = v.Visible
-                    v.Visible = false
-                elseif v:IsA("BasePart") then
-                    backup.BasePartMaterials[v] = v.Material
-                    v.Material = Enum.Material.SmoothPlastic
-                elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SpecialMesh") then
-                    -- แทนที่จะลบเก็บ parent ไว้เพื่อตอนปิดสามารถสร้างใหม่
-                    backup.MeshAndDecalParents[v] = {Parent=v.Parent, ClassName=v.ClassName, Name=v.Name}
-                    v:Destroy()
-                end
-            end
-
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-            pcall(function() game.Lighting.GlobalShadows = false end)
-            pcall(function() game.Lighting.FogEnd = 9e9 end)
-
+            settings().Rendering.QualityLevel=Enum.QualityLevel.Level01
+            pcall(function() game.Lighting.GlobalShadows=false end)
+            pcall(function() game.Lighting.FogEnd=9e9 end)
         else
-            -- คืนค่าเดิม
-            settings().Rendering.QualityLevel = backup.QualityLevel
-            game.Lighting.GlobalShadows = backup.GlobalShadows
-            game.Lighting.FogEnd = backup.FogEnd
+            settings().Rendering.QualityLevel=backup.QualityLevel
+            game.Lighting.GlobalShadows=backup.GlobalShadows
+            game.Lighting.FogEnd=backup.FogEnd
             if setfpscap and backup.FPSCap then setfpscap(backup.FPSCap) end
-
-            for v, enabled in pairs(backup.ParticleStates) do
-                if v and v.Parent then v.Enabled = enabled end
-            end
-            for v, visible in pairs(backup.ExplosionStates) do
-                if v and v.Parent then v.Visible = visible end
-            end
-            for part, material in pairs(backup.BasePartMaterials) do
-                if part and part.Parent then part.Material = material end
-            end
-            for v, info in pairs(backup.MeshAndDecalParents) do
-                if info.Parent then
-                    local newObj
-                    if info.ClassName == "Decal" then
-                        newObj = Instance.new("Decal")
-                    elseif info.ClassName == "Texture" then
-                        newObj = Instance.new("Texture")
-                    elseif info.ClassName == "SpecialMesh" then
-                        newObj = Instance.new("SpecialMesh")
-                    end
-                    if newObj then
-                        newObj.Name = info.Name
-                        newObj.Parent = info.Parent
-                    end
-                end
-            end
+            for v,enabled in pairs(backup.ParticleStates) do if v and v.Parent then v.Enabled=enabled end end
+            for v,visible in pairs(backup.ExplosionStates) do if v and v.Parent then v.Visible=visible end end
+            for part,material in pairs(backup.BasePartMaterials) do if part and part.Parent then part.Material=material end end
+            for v,info in pairs(backup.MeshAndDecalParents) do if info.Parent then
+                local newObj
+                if info.ClassName=="Decal" then newObj=Instance.new("Decal") elseif info.ClassName=="Texture" then newObj=Instance.new("Texture") elseif info.ClassName=="SpecialMesh" then newObj=Instance.new("SpecialMesh") end
+                if newObj then newObj.Name=info.Name newObj.Parent=info.Parent end
+            end end
         end
     end
 })
