@@ -48,147 +48,6 @@ Window:Notify({
 })
 
 -- ===== Services =====
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local buyEvent = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
-local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
-
--- ===== Main Tab =====
-local MainTab = Window:Tab({Title = "Main", Icon = "star"})
-MainTab:Section({Title = "Player Boosts"})
-
--- Speed Boost Slider
-MainTab:Slider({
-    Title = "Speed Boost",
-    Desc = "Adjust WalkSpeed",
-    Min = 16,
-    Max = 200,
-    Default = Config.SpeedBoost or 16,
-    Callback = function(value)
-        Config.SpeedBoost = value
-        saveConfig(Config)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
-        end
-    end
-})
-
--- Jump Power Slider
-MainTab:Slider({
-    Title = "Jump Power",
-    Desc = "Adjust Jump Power",
-    Min = 50,
-    Max = 500,
-    Default = Config.JumpPower or 50,
-    Callback = function(value)
-        Config.JumpPower = value
-        saveConfig(Config)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
-        end
-    end
-})
-
--- ===== Boost FPS Clay Mode Toggle with Restore =====
-local clayModeEnabled = false
-
--- ตัวแปรสำรองค่าเดิม
-local backup = {
-    QualityLevel = settings().Rendering.QualityLevel,
-    GlobalShadows = game.Lighting.GlobalShadows,
-    FogEnd = game.Lighting.FogEnd,
-    FPSCap = (setfpscap and 60 or nil),
-    ParticleStates = {},
-    ExplosionStates = {},
-    BasePartMaterials = {},
-    MeshAndDecalParents = {}
-}
-
-MainTab:Toggle({
-    Title = "Boost FPS (Clay Mode)",
-    Desc = "Remove textures & smooth everything like clay",
-    Value = false,
-    Callback = function(state)
-        clayModeEnabled = state
-
-        if clayModeEnabled then
-            -- Backup ก่อน
-            backup.QualityLevel = settings().Rendering.QualityLevel
-            backup.GlobalShadows = game.Lighting.GlobalShadows
-            backup.FogEnd = game.Lighting.FogEnd
-            if setfpscap then
-                backup.FPSCap = 60 -- สมมุติว่าปกติ FPS 60
-                setfpscap(240)
-            end
-
-            -- Backup สถานะของ Particle, Trail, Fire, Smoke, Explosion
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") then
-                    backup.ParticleStates[v] = v.Enabled
-                    v.Enabled = false
-                elseif v:IsA("Explosion") then
-                    backup.ExplosionStates[v] = v.Visible
-                    v.Visible = false
-                elseif v:IsA("BasePart") then
-                    backup.BasePartMaterials[v] = v.Material
-                    v.Material = Enum.Material.SmoothPlastic
-                elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SpecialMesh") then
-                    -- แทนที่จะลบเก็บ parent ไว้เพื่อตอนปิดสามารถสร้างใหม่
-                    backup.MeshAndDecalParents[v] = {Parent=v.Parent, ClassName=v.ClassName, Name=v.Name}
-                    v:Destroy()
-                end
-            end
-
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-            pcall(function() game.Lighting.GlobalShadows = false end)
-            pcall(function() game.Lighting.FogEnd = 9e9 end)
-
-        else
-            -- คืนค่าเดิม
-            settings().Rendering.QualityLevel = backup.QualityLevel
-            game.Lighting.GlobalShadows = backup.GlobalShadows
-            game.Lighting.FogEnd = backup.FogEnd
-            if setfpscap and backup.FPSCap then setfpscap(backup.FPSCap) end
-
-            for v, enabled in pairs(backup.ParticleStates) do
-                if v and v.Parent then v.Enabled = enabled end
-            end
-            for v, visible in pairs(backup.ExplosionStates) do
-                if v and v.Parent then v.Visible = visible end
-            end
-            for part, material in pairs(backup.BasePartMaterials) do
-                if part and part.Parent then part.Material = material end
-            end
-            for v, info in pairs(backup.MeshAndDecalParents) do
-                if info.Parent then
-                    local newObj
-                    if info.ClassName == "Decal" then
-                        newObj = Instance.new("Decal")
-                    elseif info.ClassName == "Texture" then
-                        newObj = Instance.new("Texture")
-                    elseif info.ClassName == "SpecialMesh" then
-                        newObj = Instance.new("SpecialMesh")
-                    end
-                    if newObj then
-                        newObj.Name = info.Name
-                        newObj.Parent = info.Parent
-                    end
-                end
-            end
-        end
-    end
-})
-
-
-
-
-
-
-
-
-
--- ===== Services =====
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -207,7 +66,10 @@ local hasWarpedToHome = false
 local startFarming = false
 
 -- ===== UI Tab =====
-local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
+local Tab = Window:Tab({
+    Title = "Main",
+    Icon = "home" -- ไอคอนรูปบ้าน
+})
 
 -- Save Home Button
 Tab:Button({
@@ -377,8 +239,19 @@ end)
 
 
 
+
+
+
+
+
+
+
+
 -- ===== Auto Buy Tab =====
-local BuyTab = Window:Tab({Title = "Auto Buy", Icon = "star"})
+local BuyTab = Window:Tab({
+    Title = "Shop",
+    Icon = "shopping-cart" -- ไอคอนรถเข็น
+})
 
 -- Gears
 BuyTab:Section({Title = "Gears Shop"})
@@ -484,3 +357,148 @@ task.spawn(function()
         end
     end
 end)
+
+
+
+
+
+
+
+-- ===== Services =====
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local buyEvent = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+
+-- ===== Misc Tab =====
+local MainTab = Window:Tab({
+    Title = "Misc",
+    Icon = "settings" -- ไอคอนเฟือง
+})
+MainTab:Section({Title = "Player"})
+
+-- Speed Boost Slider
+MainTab:Slider({
+    Title = "Speed Boost",
+    Desc = "Adjust WalkSpeed",
+    Min = 16,
+    Max = 200,
+    Default = Config.SpeedBoost or 16,
+    Callback = function(value)
+        Config.SpeedBoost = value
+        saveConfig(Config)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
+        end
+    end
+})
+
+-- Jump Power Slider
+MainTab:Slider({
+    Title = "Jump Power",
+    Desc = "Adjust Jump Power",
+    Min = 50,
+    Max = 500,
+    Default = Config.JumpPower or 50,
+    Callback = function(value)
+        Config.JumpPower = value
+        saveConfig(Config)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
+        end
+    end
+})
+
+
+MainTab:Section({Title = "Graphics"})
+
+-- ===== Boost FPS Clay Mode Toggle with Restore =====
+local clayModeEnabled = false
+
+-- ตัวแปรสำรองค่าเดิม
+local backup = {
+    QualityLevel = settings().Rendering.QualityLevel,
+    GlobalShadows = game.Lighting.GlobalShadows,
+    FogEnd = game.Lighting.FogEnd,
+    FPSCap = (setfpscap and 60 or nil),
+    ParticleStates = {},
+    ExplosionStates = {},
+    BasePartMaterials = {},
+    MeshAndDecalParents = {}
+}
+
+MainTab:Toggle({
+    Title = "Boost FPS (Clay Mode)",
+    Desc = "Remove textures & smooth everything like clay",
+    Value = false,
+    Callback = function(state)
+        clayModeEnabled = state
+
+        if clayModeEnabled then
+            -- Backup ก่อน
+            backup.QualityLevel = settings().Rendering.QualityLevel
+            backup.GlobalShadows = game.Lighting.GlobalShadows
+            backup.FogEnd = game.Lighting.FogEnd
+            if setfpscap then
+                backup.FPSCap = 60 -- สมมุติว่าปกติ FPS 60
+                setfpscap(240)
+            end
+
+            -- Backup สถานะของ Particle, Trail, Fire, Smoke, Explosion
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") then
+                    backup.ParticleStates[v] = v.Enabled
+                    v.Enabled = false
+                elseif v:IsA("Explosion") then
+                    backup.ExplosionStates[v] = v.Visible
+                    v.Visible = false
+                elseif v:IsA("BasePart") then
+                    backup.BasePartMaterials[v] = v.Material
+                    v.Material = Enum.Material.SmoothPlastic
+                elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SpecialMesh") then
+                    -- แทนที่จะลบเก็บ parent ไว้เพื่อตอนปิดสามารถสร้างใหม่
+                    backup.MeshAndDecalParents[v] = {Parent=v.Parent, ClassName=v.ClassName, Name=v.Name}
+                    v:Destroy()
+                end
+            end
+
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+            pcall(function() game.Lighting.GlobalShadows = false end)
+            pcall(function() game.Lighting.FogEnd = 9e9 end)
+
+        else
+            -- คืนค่าเดิม
+            settings().Rendering.QualityLevel = backup.QualityLevel
+            game.Lighting.GlobalShadows = backup.GlobalShadows
+            game.Lighting.FogEnd = backup.FogEnd
+            if setfpscap and backup.FPSCap then setfpscap(backup.FPSCap) end
+
+            for v, enabled in pairs(backup.ParticleStates) do
+                if v and v.Parent then v.Enabled = enabled end
+            end
+            for v, visible in pairs(backup.ExplosionStates) do
+                if v and v.Parent then v.Visible = visible end
+            end
+            for part, material in pairs(backup.BasePartMaterials) do
+                if part and part.Parent then part.Material = material end
+            end
+            for v, info in pairs(backup.MeshAndDecalParents) do
+                if info.Parent then
+                    local newObj
+                    if info.ClassName == "Decal" then
+                        newObj = Instance.new("Decal")
+                    elseif info.ClassName == "Texture" then
+                        newObj = Instance.new("Texture")
+                    elseif info.ClassName == "SpecialMesh" then
+                        newObj = Instance.new("SpecialMesh")
+                    end
+                    if newObj then
+                        newObj.Name = info.Name
+                        newObj.Parent = info.Parent
+                    end
+                end
+            end
+        end
+    end
+})
