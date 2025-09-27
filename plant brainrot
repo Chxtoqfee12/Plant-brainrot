@@ -188,43 +188,67 @@ MainTab:Toggle({
 
 
 
-
--- ===== Auto Farm Tab =====
-local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
-
+-- ===== Services =====
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
 
+-- ===== Variables =====
 local autoAttackEnabled = false
-local followDistance = 0        -- ระยะด้านหลัง Brainrot = 0 เพราะเราจะลอยตรงเท้า
-local lerpSpeed = 0.5           -- ความเร็วลื่น
-local floatHeight = 3           -- สูงจากพื้นเล็กน้อย (ปรับตามตัวเรา)
-local sideCheckDistance = 50    -- ระยะเช็คด้านข้างตัวเรา
-local forwardCheckDistance = 100 -- ระยะเช็คด้านหน้า/หลัง Brainrot
-local target = nil
+local followDistance = 0
+local lerpSpeed = 0.5
+local floatHeight = 3
 
-local espFolder = Instance.new("Folder")
-espFolder.Name = "BrainrotESP"
-espFolder.Parent = game:GetService("CoreGui")
+local homeSaved = false
+local homePosition = nil
+local hasWarpedToHome = false
+local startFarming = false
 
--- Toggle ฟังชัน Auto Attack
-Tab:Toggle({
-    Title = "Attach & Spam Attack Brainrot",
-    Desc = "Warp to closest Brainrot and spam attack + show ESP",
-    Default = false,
-    Callback = function(state)
-        autoAttackEnabled = state
-        -- เปิด/ปิด ESP
-        for _, gui in ipairs(espFolder:GetChildren()) do
-            gui.Enabled = state
+-- ===== UI Tab =====
+local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
+
+-- Save Home Button
+Tab:Button({
+    Title = "Save Home",
+    Desc = "Click Garden to warp there and press SAVE first!",
+    Callback = function()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            homePosition = player.Character.HumanoidRootPart.Position
+            homeSaved = true
+            Window:Notify({
+                Title = "Saved!",
+                Desc = "Home position saved successfully.",
+                Time = 3
+            })
         end
     end
 })
 
--- Get all Brainrots (ทุกตัว)
+-- Toggle Auto Brainrot
+Tab:Toggle({
+    Title = "Auto Attack Brainrot",
+    Desc = "You must press SAVE HOME first before using Auto Attack Brainrot!",
+    Default = false,
+    Callback = function(state)
+        autoAttackEnabled = state
+        if autoAttackEnabled and not homeSaved then
+            Window:Notify({
+                Title = "Warning",
+                Desc = "Please SAVE your home first!",
+                Time = 3
+            })
+            autoAttackEnabled = false -- block auto attack
+        else
+            startFarming = false
+            hasWarpedToHome = false
+        end
+    end
+})
+
+
+-- ===== Functions =====
 local function getBrainrots()
     local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
     if not folder then return {} end
@@ -238,7 +262,6 @@ local function getBrainrots()
     return brainrots
 end
 
--- Attack function
 local function attackBrainrot(brainrot)
     if not brainrot or not brainrot.Parent then return end
     local args = { { brainrot.Name } }
@@ -247,26 +270,7 @@ local function attackBrainrot(brainrot)
     end)
 end
 
--- สร้าง ESP ให้ Brainrot ทุกตัว
-local function createESP(brainrot)
-    if not brainrot or not brainrot.Parent then return end
-    if espFolder:FindFirstChild(brainrot.Name) then return end
-
-    local part = brainrot:FindFirstChild("HumanoidRootPart") or brainrot:FindFirstChildWhichIsA("BasePart")
-    if not part then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = brainrot.Name
-    highlight.Adornee = part
-    highlight.FillColor = Color3.fromRGB(255,0,0)
-    highlight.FillTransparency = 0.5
-    highlight.OutlineColor = Color3.fromRGB(255,255,255)
-    highlight.OutlineTransparency = 0
-    highlight.Enabled = autoAttackEnabled
-    highlight.Parent = espFolder
-end
-
--- ====================== Follow & Attack Loop ======================
+-- ===== Loop Auto Brainrot =====
 task.spawn(function()
     while true do
         task.wait(0.03)
@@ -278,53 +282,48 @@ task.spawn(function()
                 humanoid.Sit = false
                 hrp.Velocity = Vector3.zero
 
-                local brainrots = getBrainrots()
-
-                -- สร้าง ESP ทุกตัว
-                for _, enemy in ipairs(brainrots) do
-                    createESP(enemy)
+                -- Warp to home first
+                if not hasWarpedToHome and homeSaved and homePosition then
+                    hrp.CFrame = CFrame.new(homePosition)
+                    hasWarpedToHome = true
+                    wait(0.5)
+                    startFarming = true
                 end
 
-                -- หา Brainrot ใกล้ตัวเราที่สุด
-                local closest, minDist = nil, math.huge
-                for _, enemy in ipairs(brainrots) do
-                    if enemy and enemy.Parent then
-                        local part = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildWhichIsA("BasePart")
-                        if part then
-                            local offset = part.Position - hrp.Position
-                            local sideDist = Vector3.new(offset.X, 0, offset.Z).Magnitude
-                            local forwardDist = offset.Magnitude
-                            if sideDist <= sideCheckDistance and forwardDist <= forwardCheckDistance then
-                                if forwardDist < minDist then
+                -- Start farming Brainrots
+                if startFarming then
+                    local brainrots = getBrainrots()
+
+                    local closest, minDist = nil, math.huge
+                    for _, enemy in ipairs(brainrots) do
+                        if enemy and enemy.Parent then
+                            local part = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildWhichIsA("BasePart")
+                            if part then
+                                local dist = (part.Position - hrp.Position).Magnitude
+                                if dist < minDist then
                                     closest = enemy
-                                    minDist = forwardDist
+                                    minDist = dist
                                 end
                             end
                         end
                     end
-                end
-                target = closest
 
-                if target and target.Parent then
-                    local targetPart = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChildWhichIsA("BasePart")
-                    if targetPart then
-                        -- ลอยตรงเท้า Brainrot (ตัวเราอยู่ครึ่งใต้ดิน)
-                        local footHeight = 0.5
-                        local targetPos = targetPart.Position
-                        local desiredPos = Vector3.new(targetPos.X, targetPos.Y - floatHeight + footHeight, targetPos.Z)
-                        local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
-
-                        -- หันหน้าไปตรง Brainrot
-                        hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPos.X, newPos.Y, targetPos.Z))
-
-                        -- Spam attack
-                        attackBrainrot(target)
+                    local target = closest
+                    if target and target.Parent then
+                        local targetPart = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChildWhichIsA("BasePart")
+                        if targetPart then
+                            local desiredPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z)
+                            local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
+                            hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
+                            attackBrainrot(target)
+                        end
                     end
                 end
             end
         end
     end
 end)
+
 
 
 
