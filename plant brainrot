@@ -1,14 +1,28 @@
--- ====== Config System (Delta Compatible) ======
-getgenv().PlantBrainrotConfig = getgenv().PlantBrainrotConfig or {}
-local Config = getgenv().PlantBrainrotConfig
+-- ====== Config Save System ======
+local HttpService = game:GetService("HttpService")
+local configFile = "PlantBrainrotConfig.json"
 
-local function saveConfig()
-    getgenv().PlantBrainrotConfig = Config
+-- โหลด config ถ้ามี
+local function loadConfig()
+    if isfile(configFile) then
+        local data = readfile(configFile)
+        return HttpService:JSONDecode(data)
+    end
+    return {}
 end
+
+-- เซฟ config
+local function saveConfig(cfg)
+    writefile(configFile, HttpService:JSONEncode(cfg))
+end
+
+-- โหลดค่า config
+local Config = loadConfig()
 
 -- ===== Load UI Library =====
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/lib"))()
 
+-- Create Main Window
 local Window = Library:Window({
     Title = "CHX Plant vs Brainrot",
     Desc = "discord.gg/zHMEUZrHZ6",
@@ -18,6 +32,7 @@ local Window = Library:Window({
     CloseUIButton = {Enabled = true, Text = "Close/Open"}
 })
 
+-- Notification
 Window:Notify({
     Title = "Notification",
     Desc = "สคริปแมพ 'Plant vs Brainrot' V1 แจ้งบัคที่ Discord",
@@ -35,35 +50,39 @@ local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemS
 local MainTab = Window:Tab({Title = "Main", Icon = "star"})
 MainTab:Section({Title = "Player Boosts"})
 
--- Speed Boost
+-- Speed Boost Slider
 MainTab:Slider({
     Title = "Speed Boost",
-    Min = 16, Max = 200,
+    Desc = "Adjust WalkSpeed",
+    Min = 16,
+    Max = 200,
     Default = Config.SpeedBoost or 16,
     Callback = function(value)
         Config.SpeedBoost = value
-        saveConfig()
+        saveConfig(Config)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
             LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
         end
     end
 })
 
--- Jump Power
+-- Jump Power Slider
 MainTab:Slider({
     Title = "Jump Power",
-    Min = 50, Max = 500,
+    Desc = "Adjust Jump Power",
+    Min = 50,
+    Max = 500,
     Default = Config.JumpPower or 50,
     Callback = function(value)
         Config.JumpPower = value
-        saveConfig()
+        saveConfig(Config)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
             LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
         end
     end
 })
 
--- Boost FPS Clay Mode
+-- Boost FPS Clay Mode Button (ไม่ต้องเซฟค่าเพราะกดครั้งเดียว)
 MainTab:Button({
     Title = "Boost FPS (Clay Mode)",
     Desc = "Remove textures & smooth everything like clay",
@@ -98,14 +117,15 @@ local cooldownTime = 20
 local currentCooldown = 0
 local cooldownLabel
 
+-- Toggle Auto Sell (ไม่บันทึกค่า)
 FarmTab:Toggle({
     Title = "Auto Sell Brainrot",
-    Default = sellingEnabled,
+    Desc = "Auto sell every 20 seconds",
+    Default = false, -- เริ่มปิดทุกครั้งที่รีเกม
     Callback = function(state)
         sellingEnabled = state
-        Config.AutoSell = state
-        saveConfig()
         if state then
+            -- ขายทันที + เริ่ม cooldown
             pcall(function() sellRemote:FireServer() end)
             currentCooldown = cooldownTime
         else
@@ -114,8 +134,10 @@ FarmTab:Toggle({
     end
 })
 
+-- Label แสดงสถานะ
 cooldownLabel = FarmTab:Label("Sell Cooldown: OFF")
 
+-- Loop Auto Sell
 task.spawn(function()
     while true do
         task.wait(1)
@@ -143,7 +165,7 @@ BuyTab:Toggle({
     Callback = function(v)
         buyAllGearsEnabled = v
         Config.BuyAllGears = v
-        saveConfig()
+        saveConfig(Config)
     end
 })
 
@@ -162,7 +184,7 @@ for _, gearName in ipairs(gearsItems) do
         Callback = function(v)
             autoBuyGears[gearName] = v
             Config.AutoBuyGears = autoBuyGears
-            saveConfig()
+            saveConfig(Config)
         end
     })
 end
@@ -176,7 +198,7 @@ BuyTab:Toggle({
     Callback = function(v)
         buyAllSeedsEnabled = v
         Config.BuyAllSeeds = v
-        saveConfig()
+        saveConfig(Config)
     end
 })
 
@@ -195,7 +217,7 @@ for _, seedName in ipairs(seedItems) do
         Callback = function(v)
             autoBuySeeds[seedName] = v
             Config.AutoBuySeeds = autoBuySeeds
-            saveConfig()
+            saveConfig(Config)
         end
     })
 end
