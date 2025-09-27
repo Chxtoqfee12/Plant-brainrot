@@ -477,15 +477,20 @@ task.spawn(function()
     while true do
         task.wait(0.1)
 
+        -- ===== Auto Buy Gears =====
         if buyAllGearsEnabled then
             for _, gearName in ipairs(gearsItems) do
-                pcall(function() buyEvent:FireServer({gearName," "}) end)
+                pcall(function()
+                    buyEvent:FireServer({gearName, "\026"})
+                end)
                 task.wait(0.5)
             end
         else
             for gearName, isEnabled in pairs(autoBuyGears) do
                 if isEnabled then
-                    pcall(function() buyEvent:FireServer({gearName," "}) end)
+                    pcall(function()
+                        buyEvent:FireServer({gearName, "\026"})
+                    end)
                     task.wait(0.5)
                 end
             end
@@ -493,13 +498,13 @@ task.spawn(function()
 
         if buyAllSeedsEnabled then
             for _, seedName in ipairs(seedItems) do
-                pcall(function() buyEvent:FireServer({seedName,"\a"}) end)
+                pcall(function() buyEvent:FireServer({seedName,"\b"}) end)
                 task.wait(0.5)
             end
         else
             for seedName, isEnabled in pairs(autoBuySeeds) do
                 if isEnabled then
-                    pcall(function() buyEvent:FireServer({seedName,"\a"}) end)
+                    pcall(function() buyEvent:FireServer({seedName,"\b"}) end)
                     task.wait(0.5)
                 end
             end
