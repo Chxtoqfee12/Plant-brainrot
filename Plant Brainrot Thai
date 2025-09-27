@@ -1,0 +1,341 @@
+-- ==========================
+-- Place ID ของ Plants Vs Brainrots
+-- ==========================
+local PLACE_ID = 127742093697776
+if game.PlaceId ~= PLACE_ID then return end -- เช็คว่าอยู่ในแมพ
+
+-- ==========================
+-- ระบบบันทึกค่า Config
+-- ==========================
+local HttpService = game:GetService("HttpService")
+local configFile = "PlantBrainrotConfig.json"
+
+local function loadConfig()
+    if isfile(configFile) then
+        return HttpService:JSONDecode(readfile(configFile))
+    end
+    return {}
+end
+
+local function saveConfig(cfg)
+    writefile(configFile, HttpService:JSONEncode(cfg))
+end
+
+local Config = loadConfig()
+
+-- ==========================
+-- โหลด UI Library
+-- ==========================
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/lib"))()
+local Window = Library:Window({
+    Title = "CHX Plant vs Brainrot V1.1",
+    Desc = "discord.gg/zHMEUZrHZ6",
+    Icon = 105059922903197,
+    Theme = "Dark",
+    Config = {Keybind = Enum.KeyCode.LeftControl, Size = UDim2.new(0,450,0,350)},
+    CloseUIButton = {Enabled = true, Text = "ปิด/เปิด"}
+})
+
+Window:Notify({
+    Title = "แจ้งเตือน",
+    Desc = "สคริปแมพ 'Plant vs Brainrot' V1.1 กรุณาแจ้งบัคที่ Discord",
+    Time = 4
+})
+
+-- ==========================
+-- Services
+-- ==========================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
+local buyEvent = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+
+-- ==========================
+-- Variables
+-- ==========================
+local autoAttackEnabled, sellingEnabled = false, false
+local followDistance, lerpSpeed, floatHeight = 0, 0.5, 3
+local homeSaved, hasWarpedToHome, startFarming = false, false, false
+local homePosition = nil
+local cooldownTime, lastSellTime = 20, 0
+
+-- ==========================
+-- ฟังก์ชันทั่วไป
+-- ==========================
+local function getBrainrots()
+    local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
+    if not folder then return {} end
+
+    local brainrots = {}
+    for _, v in ipairs(folder:GetChildren()) do
+        if v:IsA("Model") then
+            table.insert(brainrots, v)
+        end
+    end
+    return brainrots
+end
+
+local function attackBrainrot(brainrot)
+    if not brainrot or not brainrot.Parent then return end
+    pcall(function()
+        attackRemote:FireServer({{brainrot.Name}})
+    end)
+end
+
+-- ==========================
+-- TAB 1: หน้าแรก
+-- ==========================
+local MainTab = Window:Tab({Title = "🌟 หน้าแรก", Icon = "star"})
+MainTab:Label({Title = "👋 ยินดีต้อนรับสู่สคริปต์, " .. player.Name})
+MainTab:Label({Title = "🐞 หากพบปัญหาหรืออยากรายงานบัค กรุณาแจ้งที่ Discord"})
+
+local CodeBlock = MainTab:Code({
+    Title = "🔗 Discord",
+    Code = "https://discord.gg/zHMEUZrHZ6"
+})
+task.delay(5, function()
+    CodeBlock:SetCode("https://discord.gg/zHMEUZrHZ6")
+end)
+
+-- ==========================
+-- TAB 2: ฟาร์ม
+-- ==========================
+local FarmTab = Window:Tab({Title = "🚜 ฟาร์ม", Icon = "wrench"})
+
+-- ปุ่มบันทึกตำแหน่งบ้าน
+FarmTab:Button({
+    Title = "💾 บันทึกตำแหน่งบ้าน",
+    Desc = "ไปที่สวนและกดปุ่ม SAVE ก่อน",
+    Callback = function()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            homePosition = player.Character.HumanoidRootPart.Position
+            homeSaved = true
+            Window:Notify({Title="บันทึกแล้ว!", Desc="ตำแหน่งบ้านถูกบันทึกเรียบร้อย", Time=3})
+        end
+    end
+})
+
+-- Toggle Auto Attack
+FarmTab:Toggle({
+    Title = "⚔️ โจมตี Brainrot อัตโนมัติ",
+    Desc = "ต้องบันทึกบ้านก่อนใช้งาน",
+    Value = false,
+    Callback = function(state)
+        autoAttackEnabled = state
+        if autoAttackEnabled and not homeSaved then
+            Window:Notify({Title="คำเตือน", Desc="กรุณาบันทึกบ้านก่อน!", Time=3})
+            autoAttackEnabled = false
+        else
+            startFarming = false
+            hasWarpedToHome = false
+        end
+    end
+})
+
+-- Toggle Auto Sell
+FarmTab:Toggle({
+    Title = "💰 ขาย Brainrot อัตโนมัติ",
+    Desc = "ขายทุก 20 วินาที",
+    Value = false,
+    Callback = function(state)
+        sellingEnabled = state
+        if state then
+            pcall(function() sellRemote:FireServer() end) -- ขายทันทีตอนเปิด
+            lastSellTime = tick()
+        end
+    end
+})
+
+-- Loop Auto Attack + Auto Sell
+task.spawn(function()
+    while true do
+        task.wait(0.03)
+
+        -- Auto Attack
+        if autoAttackEnabled and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if hrp and humanoid then
+                humanoid.PlatformStand, humanoid.Sit = false, false
+                hrp.Velocity = Vector3.zero
+
+                if not hasWarpedToHome and homeSaved and homePosition then
+                    hrp.CFrame = CFrame.new(homePosition)
+                    hasWarpedToHome = true
+                    wait(0.5)
+                    startFarming = true
+                end
+
+                if startFarming then
+                    local brainrots = getBrainrots()
+                    local closest, minDist = nil, math.huge
+                    for _, enemy in ipairs(brainrots) do
+                        if enemy and enemy.Parent then
+                            local part = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildWhichIsA("BasePart")
+                            if part then
+                                local dist = (part.Position - hrp.Position).Magnitude
+                                if dist < minDist then
+                                    closest = enemy
+                                    minDist = dist
+                                end
+                            end
+                        end
+                    end
+
+                    if closest and closest.Parent then
+                        local targetPart = closest:FindFirstChild("HumanoidRootPart") or closest:FindFirstChildWhichIsA("BasePart")
+                        if targetPart then
+                            local desiredPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z)
+                            local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
+                            hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
+                            local idObj = closest:FindFirstChild("ID")
+                            local idValue = idObj and idObj.Value or closest.Name
+                            local args = { { idValue } }
+                            pcall(function() attackRemote:FireServer(unpack(args)) end)
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Auto Sell
+        if sellingEnabled and tick() - lastSellTime >= cooldownTime then
+            pcall(function() sellRemote:FireServer() end)
+            lastSellTime = tick()
+        end
+    end
+end)
+
+-- ==========================
+-- TAB 3: ร้านค้า
+-- ==========================
+local ShopTab = Window:Tab({Title = "🛒 ร้านค้า", Icon = "shopping-cart"})
+
+-- Gears
+ShopTab:Section({Title="อุปกรณ์"})
+local buyAllGearsEnabled = Config.BuyAllGears or false
+ShopTab:Toggle({
+    Title = "ซื้ออุปกรณ์ทั้งหมดอัตโนมัติ",
+    Value = buyAllGearsEnabled,
+    Callback = function(v) 
+        buyAllGearsEnabled = v 
+        Config.BuyAllGears = v 
+        saveConfig(Config) 
+    end
+})
+local gearsItems = {"Water Bucket","Frost Grenade","Banana Gun","Frost Blower","Carrot Launcher"}
+local autoBuyGears = Config.AutoBuyGears or {}
+for _, gearName in ipairs(gearsItems) do
+    if autoBuyGears[gearName]==nil then autoBuyGears[gearName]=false end
+    ShopTab:Toggle({
+        Title=gearName,
+        Value=autoBuyGears[gearName],
+        Callback=function(v) autoBuyGears[gearName]=v Config.AutoBuyGears=autoBuyGears saveConfig(Config) end
+    })
+end
+
+-- Seeds
+ShopTab:Section({Title="เมล็ดพืช"})
+local buyAllSeedsEnabled = Config.BuyAllSeeds or false
+ShopTab:Toggle({
+    Title = "ซื้อเมล็ดพืชทั้งหมดอัตโนมัติ",
+    Value = buyAllSeedsEnabled,
+    Callback = function(v) 
+        buyAllSeedsEnabled = v 
+        Config.BuyAllSeeds = v 
+        saveConfig(Config) 
+    end
+})
+local seedItems = {"Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Seed","Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Grape Seed","Cocotank Seed","Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed","Shroombino Seed"}
+local autoBuySeeds = Config.AutoBuySeeds or {}
+for _, seedName in ipairs(seedItems) do
+    if autoBuySeeds[seedName]==nil then autoBuySeeds[seedName]=false end
+    ShopTab:Toggle({
+        Title=seedName,
+        Value=autoBuySeeds[seedName],
+        Callback=function(v) autoBuySeeds[seedName]=v Config.AutoBuySeeds=autoBuySeeds saveConfig(Config) end
+    })
+end
+
+-- Loop Auto Buy
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if buyAllGearsEnabled then
+            for _, gearName in ipairs(gearsItems) do pcall(function() buyEvent:FireServer({gearName,"\026"}) end) task.wait(0.5) end
+        else
+            for gearName,isEnabled in pairs(autoBuyGears) do if isEnabled then pcall(function() buyEvent:FireServer({gearName,"\026"}) end) task.wait(0.5) end end
+        end
+        if buyAllSeedsEnabled then
+            for _, seedName in ipairs(seedItems) do pcall(function() buyEvent:FireServer({seedName,"\b"}) end) task.wait(0.5) end
+        else
+            for seedName,isEnabled in pairs(autoBuySeeds) do if isEnabled then pcall(function() buyEvent:FireServer({seedName,"\b"}) end) task.wait(0.5) end end
+        end
+    end
+end)
+
+-- ==========================
+-- TAB 4: อื่นๆ
+-- ==========================
+local MiscTab = Window:Tab({Title = "⚙️ อื่นๆ", Icon = "settings"})
+MiscTab:Section({Title="ผู้เล่น"})
+MiscTab:Slider({Title="ความเร็วเดิน", Desc="ปรับ WalkSpeed", Min=16, Max=200, Default=Config.SpeedBoost or 16, Callback=function(v)
+    Config.SpeedBoost=v
+    saveConfig(Config)
+    if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+        player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed=v
+    end
+end})
+MiscTab:Slider({Title="พลังกระโดด", Desc="ปรับ Jump Power", Min=50, Max=500, Default=Config.JumpPower or 50, Callback=function(v)
+    Config.JumpPower=v
+    saveConfig(Config)
+    if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+        player.Character:FindFirstChildOfClass("Humanoid").JumpPower=v
+    end
+end})
+
+-- ==========================
+-- โหมด FPS Clay
+-- ==========================
+local clayModeEnabled=false
+local backup={QualityLevel=settings().Rendering.QualityLevel, GlobalShadows=game.Lighting.GlobalShadows, FogEnd=game.Lighting.FogEnd, FPSCap=(setfpscap and 60 or nil), ParticleStates={}, ExplosionStates={}, BasePartMaterials={}, MeshAndDecalParents={}}
+MiscTab:Toggle({
+    Title="เพิ่ม FPS (โหมด Clay)",
+    Desc="ลบพื้นผิว & ทำทุกอย่างเรียบเหมือนดินเหนียว",
+    Value=false,
+    Callback=function(state)
+        clayModeEnabled=state
+        if clayModeEnabled then
+            backup.QualityLevel=settings().Rendering.QualityLevel
+            backup.GlobalShadows=game.Lighting.GlobalShadows
+            backup.FogEnd=game.Lighting.FogEnd
+            if setfpscap then backup.FPSCap=60 setfpscap(240) end
+            for _,v in pairs(workspace:GetDescendants()) do
+                if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Fire") or v:IsA("Smoke") then backup.ParticleStates[v]=v.Enabled v.Enabled=false
+                elseif v:IsA("Explosion") then backup.ExplosionStates[v]=v.Visible v.Visible=false
+                elseif v:IsA("BasePart") then backup.BasePartMaterials[v]=v.Material v.Material=Enum.Material.SmoothPlastic
+                elseif v:IsA("Decal") or v:IsA("Texture") or v:IsA("SpecialMesh") then backup.MeshAndDecalParents[v]={Parent=v.Parent,ClassName=v.ClassName,Name=v.Name} v:Destroy() end
+            end
+            settings().Rendering.QualityLevel=Enum.QualityLevel.Level01
+            pcall(function() game.Lighting.GlobalShadows=false end)
+            pcall(function() game.Lighting.FogEnd=9e9 end)
+        else
+            settings().Rendering.QualityLevel=backup.QualityLevel
+            game.Lighting.GlobalShadows=backup.GlobalShadows
+            game.Lighting.FogEnd=backup.FogEnd
+            if setfpscap and backup.FPSCap then setfpscap(backup.FPSCap) end
+            for v,enabled in pairs(backup.ParticleStates) do if v and v.Parent then v.Enabled=enabled end end
+            for v,visible in pairs(backup.ExplosionStates) do if v and v.Parent then v.Visible=visible end end
+            for part,material in pairs(backup.BasePartMaterials) do if part and part.Parent then part.Material=material end end
+            for v,info in pairs(backup.MeshAndDecalParents) do if info.Parent then
+                local newObj
+                if info.ClassName=="Decal" then newObj=Instance.new("Decal") elseif info.ClassName=="Texture" then newObj=Instance.new("Texture") elseif info.ClassName=="SpecialMesh" then newObj=Instance.new("SpecialMesh") end
+                if newObj then newObj.Name=info.Name newObj.Parent=info.Parent end
+            end end
+        end
+    end
+})
