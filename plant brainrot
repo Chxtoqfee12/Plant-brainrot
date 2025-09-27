@@ -111,47 +111,59 @@ MainTab:Button({
 })
 
 -- ===== Auto Farm Tab =====
-local FarmTab = Window:Tab({Title = "Auto Farm", Icon = "star"})
-local sellingEnabled = Config.AutoSell or false
+local Tab = Window:Tab({Title = "Auto Farm", Icon = "star"})
+
+-- ====== Sell All Brainrot ======
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+
+local sellingEnabled = false
 local cooldownTime = 20
 local currentCooldown = 0
-local cooldownLabel
 
--- Toggle Auto Sell (ไม่บันทึกค่า)
-FarmTab:Toggle({
+-- Toggle to enable/disable auto selling
+Tab:Toggle({
     Title = "Auto Sell Brainrot",
-    Desc = "Auto sell every 20 seconds",
-    Default = false, -- เริ่มปิดทุกครั้งที่รีเกม
+    Desc = "If enabled, it will instantly sell, then sell again every 20 seconds",
+    Default = false,
     Callback = function(state)
         sellingEnabled = state
+
         if state then
-            -- ขายทันที + เริ่ม cooldown
-            pcall(function() sellRemote:FireServer() end)
+            -- Sell instantly when turning ON
+            pcall(function()
+                sellRemote:FireServer()
+            end)
             currentCooldown = cooldownTime
         else
-            if cooldownLabel then cooldownLabel:Set("Sell Cooldown: OFF") end
+            cooldownLabel:Set("Sell Cooldown: OFF")
         end
     end
 })
 
--- Label แสดงสถานะ
-cooldownLabel = FarmTab:Label("Sell Cooldown: OFF")
-
--- Loop Auto Sell
+-- Loop for auto sell + update cooldown label
 task.spawn(function()
     while true do
         task.wait(1)
+
         if sellingEnabled then
             if currentCooldown <= 0 then
-                pcall(function() sellRemote:FireServer() end)
+                -- Fire Remote to sell
+                pcall(function()
+                    sellRemote:FireServer()
+                end)
                 currentCooldown = cooldownTime
             else
                 currentCooldown -= 1
             end
+
             cooldownLabel:Set("Sell Cooldown: " .. tostring(currentCooldown) .. "s")
         end
     end
 end)
+
+
+
 
 -- ===== Auto Buy Tab =====
 local BuyTab = Window:Tab({Title = "Auto Buy", Icon = "star"})
