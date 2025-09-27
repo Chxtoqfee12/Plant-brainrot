@@ -1,9 +1,12 @@
+-- ==========================
 -- Place ID ของ Plants Vs Brainrots
+-- ==========================
 local PLACE_ID = 127742093697776
-
 if game.PlaceId ~= PLACE_ID then return end -- เช็คว่าอยู่ในแมพ
 
--- ====== Config Save System ======
+-- ==========================
+-- Config Save System
+-- ==========================
 local HttpService = game:GetService("HttpService")
 local configFile = "PlantBrainrotConfig.json"
 
@@ -20,7 +23,9 @@ end
 
 local Config = loadConfig()
 
--- ===== Load UI Library =====
+-- ==========================
+-- Load UI Library
+-- ==========================
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/lib"))()
 local Window = Library:Window({
     Title = "CHX Plant vs Brainrot V1.1",
@@ -31,55 +36,70 @@ local Window = Library:Window({
     CloseUIButton = {Enabled = true, Text = "Close/Open"}
 })
 
-Window:Notify({Title = "Notification", Desc = "สคริปแมพ 'Plant vs Brainrot' V1.1 แจ้งบัคที่ Discord", Time = 4})
+Window:Notify({
+    Title = "Notification",
+    Desc = "สคริปแมพ 'Plant vs Brainrot' V1.1 แจ้งบัคที่ Discord",
+    Time = 4
+})
 
--- ===== Services =====
+-- ==========================
+-- Services
+-- ==========================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
+
 local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
 local buyEvent = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
 local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
 
--- ===== Variables =====
+-- ==========================
+-- Variables
+-- ==========================
 local autoAttackEnabled, sellingEnabled = false, false
 local followDistance, lerpSpeed, floatHeight = 0, 0.5, 3
 local homeSaved, hasWarpedToHome, startFarming = false, false, false
 local homePosition = nil
 local cooldownTime, currentCooldown = 20, 0
 
--- ===== Functions =====
+-- ==========================
+-- Functions
+-- ==========================
 local function getBrainrots()
     local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
     if not folder then return {} end
+
     local brainrots = {}
     for _, v in ipairs(folder:GetChildren()) do
-        if v:IsA("Model") then table.insert(brainrots, v) end
+        if v:IsA("Model") then
+            table.insert(brainrots, v)
+        end
     end
     return brainrots
 end
 
 local function attackBrainrot(brainrot)
     if not brainrot or not brainrot.Parent then return end
-    pcall(function() attackRemote:FireServer({{brainrot.Name}}) end)
+    pcall(function()
+        attackRemote:FireServer({{brainrot.Name}})
+    end)
 end
 
-
-
--- ===== TAB 1: Main =====
-local MainTab = Window:Tab({Title = "Main", Icon = "star"})
+-- ==========================
+-- TAB 1: Main
+-- ==========================
+local MainTab = Window:Tab({Title = "🌟 Main", Icon = "star"})
 
 MainTab:Label({Title = "👋 Welcome to Script, " .. player.Name})
 MainTab:Label({Title = "🐞 If you find a bug or want to report it, please report it on Discord."})
 
--- Code Display
+-- Code Display (Discord Link)
 local CodeBlock = MainTab:Code({
     Title = "🔗 Discord",
     Code = "https://discord.gg/zHMEUZrHZ6"
 })
 
--- Simulate update
 task.delay(5, function()
     CodeBlock:SetCode("https://discord.gg/zHMEUZrHZ6")
 end)
