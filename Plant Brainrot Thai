@@ -101,6 +101,18 @@ task.delay(5, function()
     CodeBlock:SetCode("https://discord.gg/zHMEUZrHZ6")
 end)
 
+
+-- ====== Service ======
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+
+-- ====== Config ======
+local cooldownTime = 20
+local lastSellTime = 0
+local lastSeedSellTime = 0
+local sellingEnabled = false
+local seedSellingEnabled = false
+
 -- ==========================
 -- TAB 2: ฟาร์ม
 -- ==========================
@@ -136,16 +148,30 @@ FarmTab:Toggle({
     end
 })
 
--- Toggle Auto Sell
+-- Toggle Auto Sell Brainrot
 FarmTab:Toggle({
     Title = "💰 ขาย Brainrot อัตโนมัติ",
-    Desc = "ขายทุก 20 วินาที",
+    Desc = "ขาย Brainrot ทุก 20 วินาที",
     Value = false,
     Callback = function(state)
         sellingEnabled = state
         if state then
-            pcall(function() sellRemote:FireServer() end) -- ขายทันทีตอนเปิด
+            pcall(function() sellRemote:FireServer() end)
             lastSellTime = tick()
+        end
+    end
+})
+
+-- Toggle Auto Sell Seed
+FarmTab:Toggle({
+    Title = "🌱 ขาย Seed อัตโนมัติ",
+    Desc = "ขาย Seed ทุก 20 วินาที",
+    Value = false,
+    Callback = function(state)
+        seedSellingEnabled = state
+        if state then
+            pcall(function() sellRemote:FireServer() end)
+            lastSeedSellTime = tick()
         end
     end
 })
@@ -155,7 +181,7 @@ task.spawn(function()
     while true do
         task.wait(0.03)
 
-        -- Auto Attack
+        -- Auto Attack (เหมือนเดิม)
         if autoAttackEnabled and player.Character then
             local hrp = player.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = player.Character:FindFirstChild("Humanoid")
@@ -202,10 +228,16 @@ task.spawn(function()
             end
         end
 
-        -- Auto Sell
+        -- Auto Sell Brainrot
         if sellingEnabled and tick() - lastSellTime >= cooldownTime then
             pcall(function() sellRemote:FireServer() end)
             lastSellTime = tick()
+        end
+
+        -- Auto Sell Seed
+        if seedSellingEnabled and tick() - lastSeedSellTime >= cooldownTime then
+            pcall(function() sellRemote:FireServer() end)
+            lastSeedSellTime = tick()
         end
     end
 end)
