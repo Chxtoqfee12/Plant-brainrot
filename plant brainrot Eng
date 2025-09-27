@@ -124,9 +124,11 @@ local homePosition = nil
 local hasWarpedToHome = false
 local startFarming = false
 local autoAttackEnabled = false
-local sellingEnabled = false
+local brainrotSellingEnabled = false
+local seedSellingEnabled = false
 local cooldownTime = 20
-local lastSellTime = 0
+local lastBrainrotSellTime = 0
+local lastSeedSellTime = 0
 local floatHeight = 3
 local lerpSpeed = 0.5
 
@@ -149,7 +151,7 @@ local FarmTab = Window:Tab({Title = "Farm", Icon = "wrench"})
 -- Save Home Button
 FarmTab:Button({
     Title = "Save Home",
-    Desc = "Click Garden to warp there and press SAVE first!",
+    Desc = "Go to the Garden and click this button to save your home position.",
     Callback = function()
         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             homePosition = player.Character.HumanoidRootPart.Position
@@ -162,12 +164,12 @@ FarmTab:Button({
 -- Toggle Auto Attack
 FarmTab:Toggle({
     Title = "Auto Attack Brainrot",
-    Desc = "You must press SAVE HOME first before using Auto Attack Brainrot!",
+    Desc = "You must save your home first before using this feature!",
     Default = false,
     Callback = function(state)
         autoAttackEnabled = state
         if autoAttackEnabled and not homeSaved then
-            Window:Notify({Title="Warning", Desc="Please SAVE your home first!", Time=3})
+            Window:Notify({Title="Warning", Desc="Please save your home first!", Time=3})
             autoAttackEnabled = false
         else
             startFarming = false
@@ -176,16 +178,30 @@ FarmTab:Toggle({
     end
 })
 
--- Toggle Auto Sell
+-- Toggle Auto Sell Brainrot
 FarmTab:Toggle({
     Title = "Auto Sell Brainrot",
-    Desc = "Automatically sell Brainrots every 20 seconds",
+    Desc = "Automatically sells Brainrots every 20 seconds.",
     Default = false,
     Callback = function(state)
-        sellingEnabled = state
+        brainrotSellingEnabled = state
         if state then
-            pcall(function() sellRemote:FireServer() end) -- ขายทันทีตอนเปิด
-            lastSellTime = tick()
+            pcall(function() sellRemote:FireServer() end)
+            lastBrainrotSellTime = tick()
+        end
+    end
+})
+
+-- Toggle Auto Sell Seed
+FarmTab:Toggle({
+    Title = "Auto Sell Seed",
+    Desc = "Automatically sells Seeds every 20 seconds.",
+    Default = false,
+    Callback = function(state)
+        seedSellingEnabled = state
+        if state then
+            pcall(function() sellRemote:FireServer() end)
+            lastSeedSellTime = tick()
         end
     end
 })
@@ -246,13 +262,20 @@ task.spawn(function()
             end
         end
 
-        -- ===== Auto Sell =====
-        if sellingEnabled and tick() - lastSellTime >= cooldownTime then
+        -- ===== Auto Sell Brainrot =====
+        if brainrotSellingEnabled and tick() - lastBrainrotSellTime >= cooldownTime then
             pcall(function() sellRemote:FireServer() end)
-            lastSellTime = tick()
+            lastBrainrotSellTime = tick()
+        end
+
+        -- ===== Auto Sell Seed =====
+        if seedSellingEnabled and tick() - lastSeedSellTime >= cooldownTime then
+            pcall(function() sellRemote:FireServer() end)
+            lastSeedSellTime = tick()
         end
     end
 end)
+
 
 
 
