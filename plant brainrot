@@ -420,8 +420,7 @@ BuyTab:Toggle({
 })
 
 local gearsItems = {
-    "Meme Lucky Egg","Secret Lucky Egg","Godly Lucky Egg","Speed Potion",
-    "Damage Potion","Lucky Potion","Banana Gun","Frost Grenade",
+    "Banana Gun","Frost Grenade",
     "Carrot Launcher","Water Bucket","Frost Blower",
 }
 
