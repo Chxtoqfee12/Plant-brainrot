@@ -109,7 +109,7 @@ local FarmTab = Window:Tab({Title = "🚜 ฟาร์ม", Icon = "wrench"})
 -- ปุ่มบันทึกตำแหน่งบ้าน
 FarmTab:Button({
     Title = "💾 บันทึกตำแหน่งบ้าน",
-    Desc = "ไปที่สวนและกดปุ่ม SAVE ก่อน",
+    Desc = "ไปที่สวนและกดปุ่ม บันทึกตำแหน่งบ้าน",
     Callback = function()
         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             homePosition = player.Character.HumanoidRootPart.Position
@@ -122,7 +122,7 @@ FarmTab:Button({
 -- Toggle Auto Attack
 FarmTab:Toggle({
     Title = "⚔️ โจมตี Brainrot อัตโนมัติ",
-    Desc = "ต้องบันทึกบ้านก่อนใช้งาน",
+    Desc = "ต้องบันทึกตำแหน่งบ้านก่อนใช้งาน",
     Value = false,
     Callback = function(state)
         autoAttackEnabled = state
@@ -305,7 +305,7 @@ local clayModeEnabled=false
 local backup={QualityLevel=settings().Rendering.QualityLevel, GlobalShadows=game.Lighting.GlobalShadows, FogEnd=game.Lighting.FogEnd, FPSCap=(setfpscap and 60 or nil), ParticleStates={}, ExplosionStates={}, BasePartMaterials={}, MeshAndDecalParents={}}
 MiscTab:Toggle({
     Title="เพิ่ม FPS (โหมด Clay)",
-    Desc="ลบพื้นผิว & ทำทุกอย่างเรียบเหมือนดินเหนียว",
+    Desc="ลบพื้นผิว & ทำทุกอย่างเรียบเหมือนดินน้ำมัน",
     Value=false,
     Callback=function(state)
         clayModeEnabled=state
