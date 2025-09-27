@@ -38,7 +38,7 @@ local Window = Library:Window({
 
 Window:Notify({
     Title = "Notification",
-    Desc = "สคริปแมพ 'Plant vs Brainrot' V1.1 แจ้งบัคที่ Discord",
+    Desc = "'Plant vs Brainrot' Script V1.1 Report bug on Discord",
     Time = 4
 })
 
