@@ -420,8 +420,8 @@ BuyTab:Toggle({
 })
 
 local gearsItems = {
-    "Banana Gun","Frost Grenade",
-    "Carrot Launcher","Water Bucket","Frost Blower",
+    "Water Bucket,"Frost Grenade",
+    "Banana Gun","Frost Blower","Carrot Launcher",
 }
 
 local autoBuyGears = Config.AutoBuyGears or {}
