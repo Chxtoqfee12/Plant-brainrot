@@ -2,13 +2,14 @@
 -- เช็ค PlaceId
 -- ==========================
 local PLACE_ID = 127742093697776
-if game.PlaceId ~= PLACE_ID then return end -- เช็คว่าอยู่ในแมพ
+if game.PlaceId ~= PLACE_ID then return end
 
 -- ==========================
--- UI เลือกภาษา (กรอบสีรุ้ง + ขอบมน + ลากได้)
+-- UI เลือกภาษา (แนวตั้ง + เล็ก + ขอบมน + ลากได้)
 -- ==========================
 local player = game.Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local TweenService = game:GetService("TweenService")
 
 -- สร้าง ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -18,9 +19,9 @@ screenGui.Parent = playerGui
 
 -- สร้าง Frame กลางจอ
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 400, 0, 180)
-frame.Position = UDim2.new(0.5, -200, 0.5, -90)
-frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+frame.Size = UDim2.new(0, 180, 0, 200)
+frame.Position = UDim2.new(0.5, -90, 0.5, -110)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
 frame.BorderSizePixel = 0
 frame.ClipsDescendants = true
 frame.Parent = screenGui
@@ -30,15 +31,12 @@ local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = frame
 
--- สร้างกรอบสีรุ้งรอบ Frame
+-- กรอบสีรุ้ง
 local border = Instance.new("UIStroke")
 border.Parent = frame
-border.Thickness = 4
-border.Color = Color3.fromRGB(255,0,0) -- จะอัพเดตไล่สี
-border.Transparency = 0
+border.Thickness = 3
 border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- ไล่สีรุ้ง
 local colors = {
     Color3.fromRGB(255,0,0),
     Color3.fromRGB(255,127,0),
@@ -48,29 +46,34 @@ local colors = {
     Color3.fromRGB(75,0,130),
     Color3.fromRGB(139,0,255),
 }
+
 spawn(function()
     local index = 1
+    local nextIndex = 2
+    local tweenSpeed = 0.5
     while frame.Parent do
-        border.Color = colors[index]
+        local tweenInfo = TweenInfo.new(tweenSpeed, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(border, tweenInfo, {Color = colors[nextIndex]})
+        tween:Play()
+        tween.Completed:Wait()
         index = index + 1
+        nextIndex = index + 1
         if index > #colors then index = 1 end
-        wait(0.2)
+        if nextIndex > #colors then nextIndex = 1 end
     end
 end)
 
--- ปุ่มปิด UI
+-- ปุ่มปิด UI (X) - หากต้องการไม่มีพื้นให้ตั้ง BackgroundTransparency = 1
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0,30,0,30)
-closeBtn.Position = UDim2.new(1,-35,0,5)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+closeBtn.Size = UDim2.new(0,25,0,25)
+closeBtn.Position = UDim2.new(1,-30,0,5)
+closeBtn.BackgroundTransparency = 1
 closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
 closeBtn.Font = Enum.Font.SourceSansBold
 closeBtn.TextSize = 18
 closeBtn.Parent = frame
-local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 6)
-closeCorner.Parent = closeBtn
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0,6)
 
 closeBtn.MouseButton1Click:Connect(function()
     screenGui:Destroy()
@@ -78,69 +81,59 @@ end)
 
 -- หัวข้อ
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -40, 0, 50)
-title.Position = UDim2.new(0,10,0,0)
+title.Size = UDim2.new(1, -20, 0, 40)
+title.Position = UDim2.new(0, 10, 0, 20)
 title.BackgroundTransparency = 1
 title.Text = "เลือกภาษา / Choose Language"
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 24
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextSize = 18
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextXAlignment = Enum.TextXAlignment.Center
 title.Parent = frame
 
--- คำอธิบาย
-local desc = Instance.new("TextLabel")
-desc.Size = UDim2.new(1, -20, 0, 40)
-desc.Position = UDim2.new(0, 10, 0, 50)
-desc.BackgroundTransparency = 1
-desc.Text = "กรุณาเลือกภาษา / Please select language"
-desc.Font = Enum.Font.SourceSans
-desc.TextSize = 18
-desc.TextColor3 = Color3.fromRGB(200, 200, 200)
-desc.TextWrapped = true
-desc.Parent = frame
+-- ฟังก์ชันสร้างปุ่มภาษาแบบกากะบาด + ตัวอักษรสีขาว + ไม่มีพื้น + กรอบสีรุ้ง
+local function createLangButton(text, yPos, url)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.8,0,0,40)
+    btn.Position = UDim2.new(0.1,0,yPos,0)
+    btn.BackgroundTransparency = 1 -- ไม่มีพื้น
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 20
+    btn.Parent = frame
+    local corner = Instance.new("UICorner", btn)
+    corner.CornerRadius = UDim.new(0,8)
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = btn
+    stroke.Thickness = 2
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- ปุ่มภาษาไทย
-local thaiButton = Instance.new("TextButton")
-thaiButton.Size = UDim2.new(0.4,0,0,50)
-thaiButton.Position = UDim2.new(0.05,0,0.65,0)
-thaiButton.BackgroundColor3 = Color3.fromRGB(0,170,0)
-thaiButton.Text = "ภาษาไทย"
-thaiButton.TextColor3 = Color3.fromRGB(255,255,255)
-thaiButton.Font = Enum.Font.SourceSansBold
-thaiButton.TextSize = 22
-thaiButton.Parent = frame
-local thaiCorner = Instance.new("UICorner")
-thaiCorner.CornerRadius = UDim.new(0, 10)
-thaiCorner.Parent = thaiButton
+    -- ไล่สีรุ้ง
+    spawn(function()
+        local idx = 1
+        local nextIdx = 2
+        local speed = 0.5
+        while btn.Parent do
+            local tween = TweenService:Create(stroke, TweenInfo.new(speed, Enum.EasingStyle.Linear), {Color = colors[nextIdx]})
+            tween:Play()
+            tween.Completed:Wait()
+            idx = idx + 1
+            nextIdx = idx + 1
+            if idx > #colors then idx = 1 end
+            if nextIdx > #colors then nextIdx = 1 end
+        end
+    end)
 
--- ปุ่มภาษาอังกฤษ
-local engButton = Instance.new("TextButton")
-engButton.Size = UDim2.new(0.4,0,0,50)
-engButton.Position = UDim2.new(0.55,0,0.65,0)
-engButton.BackgroundColor3 = Color3.fromRGB(0,120,255)
-engButton.Text = "English"
-engButton.TextColor3 = Color3.fromRGB(255,255,255)
-engButton.Font = Enum.Font.SourceSansBold
-engButton.TextSize = 22
-engButton.Parent = frame
-local engCorner = Instance.new("UICorner")
-engCorner.CornerRadius = UDim.new(0, 10)
-engCorner.Parent = engButton
-
--- ฟังก์ชันโหลดสคริปต์และลบ UI
-local function loadScript(url)
-    loadstring(game:HttpGet(url))()
-    screenGui:Destroy()
+    btn.MouseButton1Click:Connect(function()
+        loadstring(game:HttpGet(url))()
+        screenGui:Destroy()
+    end)
 end
 
-thaiButton.MouseButton1Click:Connect(function()
-    loadScript("https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/Plant%20Brainrot%20Thai")
-end)
-
-engButton.MouseButton1Click:Connect(function()
-    loadScript("https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/plant%20brainrot%20Eng")
-end)
+-- สร้างปุ่มภาษาไทยและอังกฤษ
+createLangButton("ภาษาไทย", 0.35, "https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/Plant%20Brainrot%20Thai")
+createLangButton("English", 0.6, "https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/plant%20brainrot%20Eng")
 
 -- ==========================
 -- ทำให้ Frame ลากได้ (รองรับ Mouse + Touch)
