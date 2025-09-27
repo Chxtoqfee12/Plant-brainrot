@@ -325,32 +325,6 @@ task.spawn(function()
 end)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 -- ====== Sell All Brainrot ======
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
@@ -420,7 +394,7 @@ BuyTab:Toggle({
 })
 
 local gearsItems = {
-    "Water Bucket,"Frost Grenade",
+    "Water Bucket","Frost Grenade",
     "Banana Gun","Frost Blower","Carrot Launcher",
 }
 
@@ -453,8 +427,8 @@ BuyTab:Toggle({
 
 local seedItems = {
     "Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Seed",
-    "Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Cocotank Seed",
-    "Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed",
+    "Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Grape Seed","Cocotank Seed",
+    "Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed","Shroombino Seed",
 }
 
 local autoBuySeeds = Config.AutoBuySeeds or {}
