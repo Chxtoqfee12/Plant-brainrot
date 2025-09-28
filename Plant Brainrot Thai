@@ -181,7 +181,9 @@ end
 -- ==========================
 local FarmTab = Window:Tab({Title = "🚜 ฟาร์ม", Icon = "wrench"})
 
+-- ==========================
 -- ปุ่มบันทึกตำแหน่งบ้าน
+-- ==========================
 FarmTab:Button({
     Title = "💾 บันทึกตำแหน่งบ้าน",
     Desc = "ไปที่สวนและกดปุ่ม บันทึกตำแหน่งบ้าน",
@@ -194,47 +196,67 @@ FarmTab:Button({
     end
 })
 
+-- ==========================
 -- Toggle Auto Attack
+-- ==========================
 FarmTab:Toggle({
     Title = "⚔️ โจมตี Brainrot อัตโนมัติ",
     Desc = "ต้องบันทึกตำแหน่งบ้านก่อนใช้งาน",
     Value = false,
     Callback = function(state)
         autoAttackEnabled = state
+
         if autoAttackEnabled and not homeSaved then
-            Window:Notify({Title="คำเตือน", Desc="กรุณาบันทึกบ้านก่อน!", Time=3})
+            Window:Notify({Title="⚠️ คำเตือน", Desc="กรุณาบันทึกบ้านก่อน!", Time=3})
             autoAttackEnabled = false
         else
             startFarming = false
             hasWarpedToHome = false
+            if state then
+                Window:Notify({Title="Auto Attack", Desc="✅ เปิดใช้งานแล้ว", Time=3})
+            else
+                Window:Notify({Title="Auto Attack", Desc="❌ ปิดการทำงานแล้ว", Time=3})
+            end
         end
     end
 })
 
+-- ==========================
 -- Toggle Auto Sell Brainrot
+-- ==========================
 FarmTab:Toggle({
     Title = "💰 ขาย Brainrot อัตโนมัติ",
     Desc = "ขาย Brainrot ทุก 20 วินาที",
     Value = false,
     Callback = function(state)
         sellingEnabled = state
+
         if state then
             pcall(function() sellRemote:FireServer() end)
             lastSellTime = tick()
+            Window:Notify({Title="Auto Sell Brainrot", Desc="✅ เปิดใช้งานแล้ว", Time=3})
+        else
+            Window:Notify({Title="Auto Sell Brainrot", Desc="❌ ปิดการทำงานแล้ว", Time=3})
         end
     end
 })
 
+-- ==========================
 -- Toggle Auto Sell Seed
+-- ==========================
 FarmTab:Toggle({
     Title = "🌱 ขาย Seed อัตโนมัติ",
     Desc = "ขาย Seed ทุก 20 วินาที",
     Value = false,
     Callback = function(state)
         seedSellingEnabled = state
+
         if state then
             pcall(function() sellRemote:FireServer() end)
             lastSeedSellTime = tick()
+            Window:Notify({Title="Auto Sell Seed", Desc="✅ เปิดใช้งานแล้ว", Time=3})
+        else
+            Window:Notify({Title="Auto Sell Seed", Desc="❌ ปิดการทำงานแล้ว", Time=3})
         end
     end
 })
