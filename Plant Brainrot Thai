@@ -1,10 +1,4 @@
 -- ==========================
--- Place ID ของ Plants Vs Brainrots
--- ==========================
-local PLACE_ID = 127742093697776
-if game.PlaceId ~= PLACE_ID then return end -- เช็คว่าอยู่ในแมพ
-
--- ==========================
 -- ระบบบันทึกค่า Config
 -- ==========================
 local HttpService = game:GetService("HttpService")
