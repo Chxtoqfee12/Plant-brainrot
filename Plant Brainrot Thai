@@ -130,25 +130,50 @@ task.delay(5, function()
     CodeBlock:SetCode("https://discord.gg/zHMEUZrHZ6")
 end)
 
--- ปุ่ม Toggle Anti AFK
+-- ==========================
+-- Toggle Anti AFK
+-- ==========================
 MainTab:Toggle({
     Title = "🛡 Anti AFK",
-    Desc = "เปิด/ปิด ป้องกันการโดนเตะออกจากเกม",
-    Default = antiAfkEnabled,
+    Desc = "เปิด/ปิด ป้องกัน AFK 20นาที",
+    Value = Config.AntiAFK or false, -- โหลดค่าจาก Config ตอนเริ่มต้น
     Callback = function(state)
-        antiAfkEnabled = state
+        -- บันทึกค่าใน Config
         Config.AntiAFK = state
         saveConfig(Config)
 
+        -- เปิด/ปิด Anti AFK ตามสถานะ
         if state then
-            enableAntiAfk()
-            Window:Notify({Title = "Anti AFK", Desc = "✅ เปิดใช้งานแล้ว", Time = 3})
+            -- ถ้ายังไม่ได้เชื่อมต่อ Anti AFK ให้เชื่อมต่อ
+            if not antiAfkConnection then
+                antiAfkConnection = player.Idled:Connect(function()
+                    pcall(function()
+                        VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                        task.wait(1)
+                        VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                    end)
+                end)
+            end
+            Window:Notify({
+                Title = "Anti AFK",
+                Desc = "✅ เปิดใช้งานแล้ว",
+                Time = 3
+            })
         else
-            disableAntiAfk()
-            Window:Notify({Title = "Anti AFK", Desc = "❌ ปิดการทำงานแล้ว", Time = 3})
+            -- ถ้ามีการเชื่อมต่อ Anti AFK อยู่ ให้ตัดการเชื่อมต่อ
+            if antiAfkConnection then
+                antiAfkConnection:Disconnect()
+                antiAfkConnection = nil
+            end
+            Window:Notify({
+                Title = "Anti AFK",
+                Desc = "❌ ปิดการทำงานแล้ว",
+                Time = 3
+            })
         end
     end
 })
+
 
 
 
