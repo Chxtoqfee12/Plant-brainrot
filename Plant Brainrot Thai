@@ -102,6 +102,26 @@ task.delay(5, function()
 end)
 
 
+MainTab:Toggle({
+    Title = "🛡 Anti AFK",
+    Desc = "เปิด/ปิด ป้องกันการโดนเตะออกจากเกม",
+    Default = antiAfkEnabled,
+    Callback = function(state)
+        antiAfkEnabled = state
+        Config.AntiAFK = state
+        saveConfig(Config)
+
+        if state then
+            enableAntiAfk()
+            Window:Notify({Title = "Anti AFK", Desc = "✅ เปิดใช้งานแล้ว", Time = 3})
+        else
+            disableAntiAfk()
+            Window:Notify({Title = "Anti AFK", Desc = "❌ ปิดการทำงานแล้ว", Time = 3})
+        end
+    end
+})
+
+
 -- ====== Service ======
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
@@ -270,10 +290,10 @@ end)
 local ShopTab = Window:Tab({Title = "🛒 ร้านค้า", Icon = "shopping-cart"})
 
 -- Gears
-ShopTab:Section({Title="อุปกรณ์"})
+ShopTab:Section({Title="Gears"})
 local buyAllGearsEnabled = Config.BuyAllGears or false
 ShopTab:Toggle({
-    Title = "ซื้ออุปกรณ์ทั้งหมดอัตโนมัติ",
+    Title = "ซื้อ Gear Shop ทั้งหมดอัตโนมัติ",
     Value = buyAllGearsEnabled,
     Callback = function(v) 
         buyAllGearsEnabled = v 
@@ -293,10 +313,10 @@ for _, gearName in ipairs(gearsItems) do
 end
 
 -- Seeds
-ShopTab:Section({Title="เมล็ดพืช"})
+ShopTab:Section({Title="Seed"})
 local buyAllSeedsEnabled = Config.BuyAllSeeds or false
 ShopTab:Toggle({
-    Title = "ซื้อเมล็ดพืชทั้งหมดอัตโนมัติ",
+    Title = "ซื้อ Seed Shop ทั้งหมดอัตโนมัติ",
     Value = buyAllSeedsEnabled,
     Callback = function(v) 
         buyAllSeedsEnabled = v 
