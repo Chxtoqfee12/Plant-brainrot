@@ -105,6 +105,8 @@ end)
 -- ====== Service ======
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
 -- ====== Config ======
 local cooldownTime = 20
@@ -112,6 +114,17 @@ local lastSellTime = 0
 local lastSeedSellTime = 0
 local sellingEnabled = false
 local seedSellingEnabled = false
+
+-- ====== ฟังก์ชันใส่อาวุธ ======
+local function equipLeatherGripBat()
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        local bat = backpack:FindFirstChild("Leather Grip Bat")
+        if bat and player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid:EquipTool(bat)
+        end
+    end
+end
 
 -- ==========================
 -- TAB 2: ฟาร์ม
@@ -181,7 +194,7 @@ task.spawn(function()
     while true do
         task.wait(0.03)
 
-        -- Auto Attack (เหมือนเดิม)
+        -- Auto Attack
         if autoAttackEnabled and player.Character then
             local hrp = player.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = player.Character:FindFirstChild("Humanoid")
@@ -218,6 +231,14 @@ task.spawn(function()
                             local desiredPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z)
                             local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
                             hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
+
+                            -- ✅ ถ้ายังไม่ได้ถือ Leather Grip Bat ให้ใส่ก่อนตี
+                            local tool = player.Character:FindFirstChildOfClass("Tool")
+                            if not tool or tool.Name ~= "Leather Grip Bat" then
+                                equipLeatherGripBat()
+                            end
+
+                            -- ตี Brainrot
                             local idObj = closest:FindFirstChild("ID")
                             local idValue = idObj and idObj.Value or closest.Name
                             local args = { { idValue } }
@@ -241,6 +262,7 @@ task.spawn(function()
         end
     end
 end)
+
 
 -- ==========================
 -- TAB 3: ร้านค้า
