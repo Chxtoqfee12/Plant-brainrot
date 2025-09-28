@@ -199,24 +199,31 @@ FarmTab:Button({
 -- ==========================
 -- Toggle Auto Attack
 -- ==========================
+local firstRunAutoAttack = true
 FarmTab:Toggle({
     Title = "⚔️ โจมตี Brainrot อัตโนมัติ",
     Desc = "ต้องบันทึกตำแหน่งบ้านก่อนใช้งาน",
     Value = false,
     Callback = function(state)
-        autoAttackEnabled = state
+        if firstRunAutoAttack then
+            firstRunAutoAttack = false
+            autoAttackEnabled = state
+            return
+        end
 
-        if autoAttackEnabled and not homeSaved then
-            Window:Notify({Title="⚠️ คำเตือน", Desc="กรุณาบันทึกบ้านก่อน!", Time=3})
-            autoAttackEnabled = false
-        else
+        if state then
+            if not homeSaved then
+                Window:Notify({Title="⚠️ คำเตือน", Desc="กรุณาบันทึกบ้านก่อน!", Time=3})
+                autoAttackEnabled = false
+                return
+            end
+            autoAttackEnabled = true
             startFarming = false
             hasWarpedToHome = false
-            if state then
-                Window:Notify({Title="Auto Attack", Desc="✅ เปิดใช้งานแล้ว", Time=3})
-            else
-                Window:Notify({Title="Auto Attack", Desc="❌ ปิดการทำงานแล้ว", Time=3})
-            end
+            Window:Notify({Title="Auto Attack", Desc="✅ เปิดใช้งานแล้ว", Time=3})
+        else
+            autoAttackEnabled = false
+            Window:Notify({Title="Auto Attack", Desc="❌ ปิดการทำงานแล้ว", Time=3})
         end
     end
 })
@@ -224,15 +231,20 @@ FarmTab:Toggle({
 -- ==========================
 -- Toggle Auto Sell Brainrot
 -- ==========================
+local firstRunSellBrainrot = true
 FarmTab:Toggle({
     Title = "💰 ขาย Brainrot อัตโนมัติ",
     Desc = "ขาย Brainrot ทุก 20 วินาที",
     Value = false,
     Callback = function(state)
-        sellingEnabled = state
+        if firstRunSellBrainrot then
+            firstRunSellBrainrot = false
+            sellingEnabled = state
+            return
+        end
 
+        sellingEnabled = state
         if state then
-            pcall(function() sellRemote:FireServer() end)
             lastSellTime = tick()
             Window:Notify({Title="Auto Sell Brainrot", Desc="✅ เปิดใช้งานแล้ว", Time=3})
         else
@@ -241,25 +253,6 @@ FarmTab:Toggle({
     end
 })
 
--- ==========================
--- Toggle Auto Sell Seed
--- ==========================
-FarmTab:Toggle({
-    Title = "🌱 ขาย Seed อัตโนมัติ",
-    Desc = "ขาย Seed ทุก 20 วินาที",
-    Value = false,
-    Callback = function(state)
-        seedSellingEnabled = state
-
-        if state then
-            pcall(function() sellRemote:FireServer() end)
-            lastSeedSellTime = tick()
-            Window:Notify({Title="Auto Sell Seed", Desc="✅ เปิดใช้งานแล้ว", Time=3})
-        else
-            Window:Notify({Title="Auto Sell Seed", Desc="❌ ปิดการทำงานแล้ว", Time=3})
-        end
-    end
-})
 
 -- Loop Auto Attack + Auto Sell
 task.spawn(function()
@@ -326,15 +319,8 @@ task.spawn(function()
             pcall(function() sellRemote:FireServer() end)
             lastSellTime = tick()
         end
-
-        -- Auto Sell Seed
-        if seedSellingEnabled and tick() - lastSeedSellTime >= cooldownTime then
-            pcall(function() sellRemote:FireServer() end)
-            lastSeedSellTime = tick()
-        end
     end
 end)
-
 
 -- ==========================
 -- TAB 3: ร้านค้า
