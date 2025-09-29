@@ -167,7 +167,7 @@ end
 -- Toggle Auto Sell Brainrot
 -- ==========================
 FarmTab:AddToggle({
-    Name = "💰 ขาย Brainrot อัตโนมัติ",
+    Name = "💰 ขาย Brainrot ทั้งหมดทุก20วินาที",
     Default = false,
     Callback = function(value)
         sellingEnabled = value
