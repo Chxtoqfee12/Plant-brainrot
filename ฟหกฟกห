@@ -13,6 +13,34 @@ local Window = OrionLib:MakeWindow({
     ConfigFolder = "CHXPlantBrainrot"
 })
 
+
+
+-- ==========================
+-- Config System
+-- ==========================
+local HttpService = game:GetService("HttpService")
+local configFile = "CHXPlantBrainrot.json"
+local config = {}
+
+local function loadConfig()
+    if isfile(configFile) then
+        config = HttpService:JSONDecode(readfile(configFile))
+    else
+        config = {}
+    end
+end
+
+local function saveConfig()
+    writefile(configFile, HttpService:JSONEncode(config))
+end
+
+loadConfig()
+
+
+
+
+
+
 -- ==========================
 -- สร้าง Tabs เปล่า ๆ
 -- ==========================
@@ -20,6 +48,7 @@ local FarmTab = Window:MakeTab({
     Name = "🚜 ฟาร์ม",
     Icon = "rbxassetid://6031075936"
 })
+
 -- ==========================
 -- ตัวแปร
 -- ==========================
@@ -28,6 +57,9 @@ local homeSaved = false
 local homePosition = nil
 local autoAttackEnabled = false
 
+-- ป้องกันแจ้งเตือนซ้ำ ๆ เมื่อเปิด Auto แต่ยังไม่ Save
+local warnedNoSave = false
+
 -- ==========================
 -- ฟังก์ชันบันทึกบ้าน
 -- ==========================
@@ -35,14 +67,36 @@ local function saveHomePosition()
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
         homePosition = player.Character.HumanoidRootPart.Position
         homeSaved = true
+
         OrionLib:MakeNotification({
             Name = "บันทึกบ้านแล้ว",
             Content = "ตำแหน่งบ้านถูกบันทึกเรียบร้อย",
             Image = "rbxassetid://6031075936",
             Time = 3
         })
+
+        -- ถ้า Auto Attack เปิดอยู่ ให้เริ่มกระบวนการ Warp/Start farming ทันที
+        if autoAttackEnabled then
+            -- รีเซ็ตสถานะ warp เพื่อให้ loop ทำการ warp ไปตำแหน่งที่เพิ่งบันทึก
+            hasWarpedToHome = false
+            startFarming = false
+            -- แจ้งเตือนว่าระบบจะเริ่มโจมตีเพราะตอนนี้บันทึกแล้ว
+            OrionLib:MakeNotification({
+                Name = "เริ่มโจมตี",
+                Content = "บันทึกเสร็จแล้ว — ระบบจะเริ่มโจมตี Brainrot ให้ทันที",
+                Image = "rbxassetid://6031075936",
+                Time = 3
+            })
+        end
     end
 end
+
+-- ==========================
+-- Section: Gears Shop
+-- ==========================
+local Fram = FarmTab:AddSection({
+    Name = "🚜 ฟาร์ม"
+})
 
 -- ==========================
 -- ปุ่มบันทึกบ้าน
@@ -59,17 +113,23 @@ FarmTab:AddToggle({
     Name = "⚔️ โจมตี Brainrot อัตโนมัติ",
     Default = false,
     Callback = function(value)
-        if not homeSaved and value then
-            OrionLib:MakeNotification({
-                Name = "⚠️ คำเตือน",
-                Content = "กรุณาบันทึกบ้านก่อนใช้งาน",
-                Image = "rbxassetid://6031075936",
-                Time = 3
-            })
-            autoAttackEnabled = false
-            return
-        end
+        -- เปิด/ปิดตามปกติ (แต่ถ้ายังไม่ save จะแจ้งเตือน ไม่บังคับปิด)
         autoAttackEnabled = value
+
+        if value and not homeSaved then
+            if not warnedNoSave then
+                OrionLib:MakeNotification({
+                    Name = "⚠️ โปรดบันทึกตำแหน่งบ้าน",
+                    Content = "กรุณากด 💾 บันทึกตำแหน่งบ้านก่อนเพื่อให้ระบบ Warp และเริ่มโจมตีได้",
+                    Image = "rbxassetid://6031075936",
+                    Time = 5
+                })
+                warnedNoSave = true
+            end
+        else
+            -- รีเซ็ต flag ถ้าปิด Auto หรือถ้มีบ้านแล้ว
+            warnedNoSave = false
+        end
     end
 })
 
@@ -104,19 +164,6 @@ local function getBrainrots()
 end
 
 -- ==========================
--- ฟังก์ชัน Equip Bat
--- ==========================
-local function equipLeatherGripBat()
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        local bat = backpack:FindFirstChild("Leather Grip Bat")
-        if bat and player.Character and player.Character:FindFirstChild("Humanoid") then
-            player.Character.Humanoid:EquipTool(bat)
-        end
-    end
-end
-
--- ==========================
 -- Toggle Auto Sell Brainrot
 -- ==========================
 FarmTab:AddToggle({
@@ -134,19 +181,62 @@ FarmTab:AddToggle({
 })
 
 -- ==========================
--- Loop Auto Attack + Auto Sell
+-- ตัวแปรเพิ่มเติมสำหรับแจ้งเตือน Bat
+-- ==========================
+local warnedNoBat = false
+
+-- ==========================
+-- Loop Auto Attack + Auto Sell + Auto Equip Bat
 -- ==========================
 task.spawn(function()
     while true do
-        task.wait(0.03)
-        -- Auto Attack
+        task.wait(0.005)  -- spam เร็วสุด (ปรับตามต้องการ)
+
         if autoAttackEnabled and player.Character then
             local hrp = player.Character:FindFirstChild("HumanoidRootPart")
             local humanoid = player.Character:FindFirstChild("Humanoid")
+            local tool = player.Character:FindFirstChildOfClass("Tool")
+
             if hrp and humanoid then
                 humanoid.PlatformStand, humanoid.Sit = false, false
                 hrp.Velocity = Vector3.zero
 
+                -- ===== Auto Equip Bat =====
+                if not tool then
+                    local backpack = player:FindFirstChild("Backpack")
+                    local foundBat = nil
+                    if backpack then
+                        for _, item in ipairs(backpack:GetChildren()) do
+                            if item:IsA("Tool") and string.find(item.Name:lower(), "bat") then
+                                foundBat = item
+                                break
+                            end
+                        end
+                    end
+
+                    -- Equip ถ้าเจอ Bat
+                    if foundBat then
+                        player.Character.Humanoid:EquipTool(foundBat)
+                        tool = foundBat
+                    else
+                        -- แจ้งเตือนถ้าไม่มี Bat
+                        if not warnedNoBat then
+                            OrionLib:MakeNotification({
+                                Name = "⚠️ โปรดถือ Bat",
+                                Content = "หา Bat ไม่เจอในกระเป๋า/ตัวละคร ดาเมจจะไม่เข้า",
+                                Image = "rbxassetid://6031075936",
+                                Time = 4
+                            })
+                            warnedNoBat = true
+                            spawn(function()
+                                wait(6)
+                                warnedNoBat = false
+                            end)
+                        end
+                    end
+                end
+
+                -- Warp to home
                 if not hasWarpedToHome and homeSaved and homePosition then
                     hrp.CFrame = CFrame.new(homePosition)
                     hasWarpedToHome = true
@@ -154,6 +244,7 @@ task.spawn(function()
                     startFarming = true
                 end
 
+                -- Start farming Brainrots
                 if startFarming then
                     local brainrots = getBrainrots()
                     local closest, minDist = nil, math.huge
@@ -173,32 +264,35 @@ task.spawn(function()
                     if closest and closest.Parent then
                         local targetPart = closest:FindFirstChild("HumanoidRootPart") or closest:FindFirstChildWhichIsA("BasePart")
                         if targetPart then
-                            local newPos = hrp.Position:Lerp(Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z), lerpSpeed)
+                            local desiredPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z)
+                            local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
                             hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
 
-                            -- ใส่อาวุธก่อนตี
-                            local tool = player.Character:FindFirstChildOfClass("Tool")
-                            if not tool or tool.Name ~= "Leather Grip Bat" then
-                                equipLeatherGripBat()
-                            end
-
-                            -- ตี Brainrot
+                            -- Spam Attack รัว ๆ หลายครั้งต่อ loop
                             local idObj = closest:FindFirstChild("ID")
                             local idValue = idObj and idObj.Value or closest.Name
-                            pcall(function() attackRemote:FireServer({{idValue}}) end)
+                            for i = 1, 6 do
+                                pcall(function()
+                                    attackRemote:FireServer({idValue})
+                                end)
+                            end
                         end
                     end
                 end
             end
         end
 
-        -- Auto Sell Brainrot
+        -- ===== Auto Sell Brainrot =====
         if sellingEnabled and tick() - lastSellTime >= cooldownTime then
-            pcall(function() sellRemote:FireServer() end)
+            pcall(function()
+                sellRemote:FireServer()
+            end)
             lastSellTime = tick()
         end
     end
 end)
+
+
 
 
 -- ==========================
@@ -210,87 +304,97 @@ local seedsItems = {"Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Se
 local autoBuyGears = {}
 local autoBuySeeds = {}
 for _, gearName in ipairs(gearsItems) do
-    autoBuyGears[gearName] = false
+    autoBuyGears[gearName] = config.autoBuyGears and config.autoBuyGears[gearName] or false
 end
 for _, seedName in ipairs(seedsItems) do
-    autoBuySeeds[seedName] = false
+    autoBuySeeds[seedName] = config.autoBuySeeds and config.autoBuySeeds[seedName] or false
 end
 
-local buyAllGearsEnabled = false
-local buyAllSeedsEnabled = false
+local buyAllGearsEnabled = config.buyAllGearsEnabled or false
+local buyAllSeedsEnabled = config.buyAllSeedsEnabled or false
+
 
 -- ==========================
--- สร้าง Tab ร้านค้า
+-- Shop Tab
 -- ==========================
 local ShopTab = Window:MakeTab({
     Name = "🛒 ร้านค้า",
     Icon = "rbxassetid://6031075936"
 })
 
+local gearsItems = {"Water Bucket","Frost Grenade","Banana Gun","Frost Blower","Carrot Launcher"}
+local seedsItems = {"Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Seed","Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Grape Seed","Cocotank Seed","Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed","Shroombino Seed"}
+
+local autoBuyGears = {}
+local autoBuySeeds = {}
+for _, gearName in ipairs(gearsItems) do
+    autoBuyGears[gearName] = config.autoBuyGears and config.autoBuyGears[gearName] or false
+end
+for _, seedName in ipairs(seedsItems) do
+    autoBuySeeds[seedName] = config.autoBuySeeds and config.autoBuySeeds[seedName] or false
+end
+
+local buyAllGearsEnabled = config.buyAllGearsEnabled or false
+local buyAllSeedsEnabled = config.buyAllSeedsEnabled or false
+
 -- ==========================
 -- Section: Gears Shop
 -- ==========================
-local GearsSection = ShopTab:AddSection({
-    Name = "⚔️ Gears Shop"
+local Fram = ShopTab:AddSection({
+    Name = "🛒 Gear"
 })
 
--- ==========================
--- ปรับ Toggle ซื้อ Gear ทั้งหมด
--- ==========================
+-- Toggle ซื้อ Gear ทั้งหมด
 ShopTab:AddToggle({
     Name = "ซื้อ Gear ทั้งหมดอัตโนมัติ",
-    Default = false,
+    Default = buyAllGearsEnabled,
     Callback = function(state)
         buyAllGearsEnabled = state
-        if state then
-            -- ซื้อ Gear ทุกชิ้น 3 stack / 2 รอบ ตัวอย่าง
-            buyMultipleStacks(gearsItems, true, 3, 2)
-        end
+        config.buyAllGearsEnabled = state
+        saveConfig()
     end
 })
 
 -- Toggle Gear รายตัว
-for i = 1, #gearsItems do
-    local gearName = gearsItems[i]
+for _, gearName in ipairs(gearsItems) do
     ShopTab:AddToggle({
         Name = gearName,
-        Default = false,
+        Default = autoBuyGears[gearName],
         Callback = function(state)
             autoBuyGears[gearName] = state
+            config.autoBuyGears = autoBuyGears
+            saveConfig()
         end
     })
 end
 
 -- ==========================
--- Section: Seeds Shop
+-- Section: Gears Shop
 -- ==========================
-local SeedsSection = ShopTab:AddSection({
-    Name = "🌱 Seeds Shop"
+local Fram = ShopTab:AddSection({
+    Name = "🛒 Seed"
 })
 
--- ==========================
--- ปรับ Toggle ซื้อ Seed ทั้งหมด
--- ==========================
+-- Toggle ซื้อ Seed ทั้งหมด
 ShopTab:AddToggle({
     Name = "ซื้อ Seed ทั้งหมดอัตโนมัติ",
-    Default = false,
+    Default = buyAllSeedsEnabled,
     Callback = function(state)
         buyAllSeedsEnabled = state
-        if state then
-            -- ซื้อ Seed ทุกชิ้น 3 stack / 2 รอบ ตัวอย่าง
-            buyMultipleStacks(seedsItems, false, 3, 2)
-        end
+        config.buyAllSeedsEnabled = state
+        saveConfig()
     end
 })
 
 -- Toggle Seed รายตัว
-for i = 1, #seedsItems do
-    local seedName = seedsItems[i]
+for _, seedName in ipairs(seedsItems) do
     ShopTab:AddToggle({
         Name = seedName,
-        Default = false,
+        Default = autoBuySeeds[seedName],
         Callback = function(state)
             autoBuySeeds[seedName] = state
+            config.autoBuySeeds = autoBuySeeds
+            saveConfig()
         end
     })
 end
@@ -330,7 +434,6 @@ function buyMultipleStacks(itemList, isGear, stackAmount, repeatTimes)
     end)
 end
 
-
 -- ==========================
 -- Loop Auto Buy Gear & Seed
 -- ==========================
@@ -342,7 +445,7 @@ task.spawn(function()
         if buyAllGearsEnabled then
             for _, gearName in ipairs(gearsItems) do
                 buyGear(gearName)
-                task.wait(0.5) -- เวลารอให้เกมรับ Remote
+                task.wait(0.5)
             end
         else
             for gearName, state in pairs(autoBuyGears) do
@@ -372,13 +475,208 @@ end)
 
 
 
-
+-- ==========================
+-- Misc Tab
+-- ==========================
 local MiscTab = Window:MakeTab({
     Name = "⚙️ อื่นๆ",
     Icon = "rbxassetid://6031075936"
 })
 
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- โหลดค่า config (ถ้ายังไม่มีจะสร้างใหม่)
+local config = {}
+if isfile("CHXPlantBrainrot/MiscConfig.json") then
+    local content = readfile("CHXPlantBrainrot/MiscConfig.json")
+    config = game:GetService("HttpService"):JSONDecode(content)
+end
+
+-- ฟังก์ชันบันทึก config
+local function saveConfig()
+    if not isfolder("CHXPlantBrainrot") then
+        makefolder("CHXPlantBrainrot")
+    end
+    writefile("CHXPlantBrainrot/MiscConfig.json", game:GetService("HttpService"):JSONEncode(config))
+end
+
 -- ==========================
--- เรียก Init เพื่อเปิด UI
+-- Section: Gears Shop
+-- ==========================
+local Fram = MiscTab:AddSection({
+    Name = "😎 Player"
+})
+
+-- ==========================
+-- WalkSpeed & JumpPower
+-- ==========================
+MiscTab:AddSlider({
+    Name = "🏃‍♂️ ความเร็วเดิน",
+    Min = 16,
+    Max = 500,
+    Default = config.walkSpeed or humanoid.WalkSpeed,
+    Callback = function(value)
+        humanoid.WalkSpeed = value
+        config.walkSpeed = value
+        saveConfig()
+    end
+})
+
+MiscTab:AddSlider({
+    Name = "🦘 ความสามารถกระโดด",
+    Min = 50,
+    Max = 500,
+    Default = config.jumpPower or humanoid.JumpPower,
+    Callback = function(value)
+        humanoid.JumpPower = value
+        config.jumpPower = value
+        saveConfig()
+    end
+})
+
+-- ==========================
+-- Dropdown เลือกผู้เล่น
+-- ==========================
+local function getOtherPlayers()
+    local list = {}
+    for _, p in ipairs(game.Players:GetPlayers()) do
+        if p ~= player then
+            table.insert(list, p.Name)
+        end
+    end
+    return list
+end
+
+local selectedPlayer = config.selectedPlayer or nil
+local playerDropdown = MiscTab:AddDropdown({
+    Name = "👤 เลือกผู้เล่น",
+    Default = selectedPlayer or "ไม่มีผู้เล่น",
+    Options = getOtherPlayers(),
+    Callback = function(value)
+        selectedPlayer = value
+        config.selectedPlayer = value
+        saveConfig()
+    end
+})
+
+game.Players.PlayerAdded:Connect(function()
+    playerDropdown:UpdateOptions(getOtherPlayers())
+end)
+game.Players.PlayerRemoving:Connect(function()
+    playerDropdown:UpdateOptions(getOtherPlayers())
+end)
+
+-- ==========================
+-- ปุ่ม Teleport to Player
+-- ==========================
+MiscTab:AddButton({
+    Name = "📍 ย้ายไปยังผู้เล่น",
+    Callback = function()
+        if selectedPlayer then
+            local target = game.Players:FindFirstChild(selectedPlayer)
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                hrp.CFrame = target.Character.HumanoidRootPart.CFrame
+                OrionLib:MakeNotification({
+                    Name = "Teleport",
+                    Content = "ย้ายไปหา "..selectedPlayer.." เรียบร้อย",
+                    Image = "rbxassetid://6031075936",
+                    Time = 3
+                })
+            else
+                OrionLib:MakeNotification({
+                    Name = "ล้มเหลว",
+                    Content = "ไม่พบตัวละครของผู้เล่นนั้น",
+                    Image = "rbxassetid://6031075936",
+                    Time = 3
+                })
+            end
+        else
+            OrionLib:MakeNotification({
+                Name = "ล้มเหลว",
+                Content = "ยังไม่ได้เลือกผู้เล่น",
+                Image = "rbxassetid://6031075936",
+                Time = 3
+            })
+        end
+    end
+})
+
+-- ==========================
+-- Dropdown Time of Day
+-- ==========================
+local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
+local selectedSky = config.selectedSky or skyOptions[1]
+
+MiscTab:AddDropdown({
+    Name = "🕒 ปรับเวลา / ท้องฟ้า",
+    Default = selectedSky,
+    Options = skyOptions,
+    Callback = function(value)
+        selectedSky = value
+        config.selectedSky = value
+        saveConfig()
+        local lighting = game:GetService("Lighting")
+        if value == "เช้า 🌅" then
+            lighting.TimeOfDay = "06:30:00"
+            lighting.Brightness = 2
+            lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 255)
+        elseif value == "เย็น 🌇" then
+            lighting.TimeOfDay = "17:30:00"
+            lighting.Brightness = 1.5
+            lighting.OutdoorAmbient = Color3.fromRGB(255, 180, 120)
+        elseif value == "พระอาทิตย์ตก 🌄" then
+            lighting.TimeOfDay = "18:15:00"
+            lighting.Brightness = 1.2
+            lighting.OutdoorAmbient = Color3.fromRGB(255, 150, 100)
+        elseif value == "กลางคืน 🌌" then
+            lighting.TimeOfDay = "22:00:00"
+            lighting.Brightness = 0.7
+            lighting.OutdoorAmbient = Color3.fromRGB(50, 50, 80)
+        end
+    end
+})
+
+-- ==========================
+-- Anti-AFK
+-- ==========================
+MiscTab:AddToggle({
+    Name = "🛡️ Anti-AFK",
+    Default = config.antiAFK or false,
+    Callback = function(value)
+        config.antiAFK = value
+        saveConfig()
+    end
+})
+
+-- ฟังก์ชัน Anti-AFK
+task.spawn(function()
+    local VirtualUser = game:GetService("VirtualUser")
+    while true do
+        task.wait(60) -- ทุก ๆ 1 นาที
+        if config.antiAFK then
+            pcall(function()
+                VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+                VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+            end)
+        end
+    end
+end)
+
+-- ==========================
+-- โหลดค่าจาก config เมื่อเริ่มเกม
+-- ==========================
+if config.walkSpeed then
+    humanoid.WalkSpeed = config.walkSpeed
+end
+if config.jumpPower then
+    humanoid.JumpPower = config.jumpPower
+end
+
+
+-- ==========================
+-- Init UI
 -- ==========================
 OrionLib:Init()
