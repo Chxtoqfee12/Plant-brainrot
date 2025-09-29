@@ -510,6 +510,34 @@ local Fram = MiscTab:AddSection({
     Name = "😎 Player"
 })
 
+
+
+-- ==========================
+-- Anti-AFK
+-- ==========================
+MiscTab:AddToggle({
+    Name = "🛡️ Anti-AFK",
+    Default = config.antiAFK or false,
+    Callback = function(value)
+        config.antiAFK = value
+        saveConfig()
+    end
+})
+
+-- ฟังก์ชัน Anti-AFK
+task.spawn(function()
+    local VirtualUser = game:GetService("VirtualUser")
+    while true do
+        task.wait(60) -- ทุก ๆ 1 นาที
+        if config.antiAFK then
+            pcall(function()
+                VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+                VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+            end)
+        end
+    end
+end)
+
 -- ==========================
 -- WalkSpeed & JumpPower
 -- ==========================
@@ -536,6 +564,42 @@ MiscTab:AddSlider({
         saveConfig()
     end
 })
+
+-- ==========================
+-- Dropdown Time of Day
+-- ==========================
+local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
+local selectedSky = config.selectedSky or skyOptions[1]
+
+MiscTab:AddDropdown({
+    Name = "🕒 ปรับเวลา / ท้องฟ้า",
+    Default = selectedSky,
+    Options = skyOptions,
+    Callback = function(value)
+        selectedSky = value
+        config.selectedSky = value
+        saveConfig()
+        local lighting = game:GetService("Lighting")
+        if value == "เช้า 🌅" then
+            lighting.TimeOfDay = "06:30:00"
+            lighting.Brightness = 2
+            lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 255)
+        elseif value == "เย็น 🌇" then
+            lighting.TimeOfDay = "17:30:00"
+            lighting.Brightness = 1.5
+            lighting.OutdoorAmbient = Color3.fromRGB(255, 180, 120)
+        elseif value == "พระอาทิตย์ตก 🌄" then
+            lighting.TimeOfDay = "18:15:00"
+            lighting.Brightness = 1.2
+            lighting.OutdoorAmbient = Color3.fromRGB(255, 150, 100)
+        elseif value == "กลางคืน 🌌" then
+            lighting.TimeOfDay = "22:00:00"
+            lighting.Brightness = 0.7
+            lighting.OutdoorAmbient = Color3.fromRGB(50, 50, 80)
+        end
+    end
+})
+
 
 -- ==========================
 -- Dropdown เลือกผู้เล่น
@@ -603,67 +667,6 @@ MiscTab:AddButton({
         end
     end
 })
-
--- ==========================
--- Dropdown Time of Day
--- ==========================
-local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
-local selectedSky = config.selectedSky or skyOptions[1]
-
-MiscTab:AddDropdown({
-    Name = "🕒 ปรับเวลา / ท้องฟ้า",
-    Default = selectedSky,
-    Options = skyOptions,
-    Callback = function(value)
-        selectedSky = value
-        config.selectedSky = value
-        saveConfig()
-        local lighting = game:GetService("Lighting")
-        if value == "เช้า 🌅" then
-            lighting.TimeOfDay = "06:30:00"
-            lighting.Brightness = 2
-            lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 255)
-        elseif value == "เย็น 🌇" then
-            lighting.TimeOfDay = "17:30:00"
-            lighting.Brightness = 1.5
-            lighting.OutdoorAmbient = Color3.fromRGB(255, 180, 120)
-        elseif value == "พระอาทิตย์ตก 🌄" then
-            lighting.TimeOfDay = "18:15:00"
-            lighting.Brightness = 1.2
-            lighting.OutdoorAmbient = Color3.fromRGB(255, 150, 100)
-        elseif value == "กลางคืน 🌌" then
-            lighting.TimeOfDay = "22:00:00"
-            lighting.Brightness = 0.7
-            lighting.OutdoorAmbient = Color3.fromRGB(50, 50, 80)
-        end
-    end
-})
-
--- ==========================
--- Anti-AFK
--- ==========================
-MiscTab:AddToggle({
-    Name = "🛡️ Anti-AFK",
-    Default = config.antiAFK or false,
-    Callback = function(value)
-        config.antiAFK = value
-        saveConfig()
-    end
-})
-
--- ฟังก์ชัน Anti-AFK
-task.spawn(function()
-    local VirtualUser = game:GetService("VirtualUser")
-    while true do
-        task.wait(60) -- ทุก ๆ 1 นาที
-        if config.antiAFK then
-            pcall(function()
-                VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-                VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-            end)
-        end
-    end
-end)
 
 -- ==========================
 -- โหลดค่าจาก config เมื่อเริ่มเกม
