@@ -227,21 +227,18 @@ local ShopTab = Window:MakeTab({
     Icon = "rbxassetid://6031075936"
 })
 
--- Toggle ซื้อ Gear ทั้งหมด
+-- ==========================
+-- ปรับ Toggle ซื้อ Gear ทั้งหมด
+-- ==========================
 ShopTab:AddToggle({
     Name = "ซื้อ Gear ทั้งหมดอัตโนมัติ",
     Default = false,
     Callback = function(state)
         buyAllGearsEnabled = state
-    end
-})
-
--- Toggle ซื้อ Seed ทั้งหมด
-ShopTab:AddToggle({
-    Name = "ซื้อ Seed ทั้งหมดอัตโนมัติ",
-    Default = false,
-    Callback = function(state)
-        buyAllSeedsEnabled = state
+        if state then
+            -- ซื้อ Gear ทุกชิ้น 3 stack / 2 รอบ ตัวอย่าง
+            buyMultipleStacks(gearsItems, true, 3, 2)
+        end
     end
 })
 
@@ -256,6 +253,21 @@ for i = 1, #gearsItems do
         end
     })
 end
+
+-- ==========================
+-- ปรับ Toggle ซื้อ Seed ทั้งหมด
+-- ==========================
+ShopTab:AddToggle({
+    Name = "ซื้อ Seed ทั้งหมดอัตโนมัติ",
+    Default = false,
+    Callback = function(state)
+        buyAllSeedsEnabled = state
+        if state then
+            -- ซื้อ Seed ทุกชิ้น 3 stack / 2 รอบ ตัวอย่าง
+            buyMultipleStacks(seedsItems, false, 3, 2)
+        end
+    end
+})
 
 -- Toggle Seed รายตัว
 for i = 1, #seedsItems do
@@ -283,6 +295,27 @@ end
 local function buySeed(seedName)
     pcall(function() buySeedRemote:FireServer(seedName) end)
 end
+
+-- ==========================
+-- ฟังก์ชันซื้อหลาย stack หลายรอบ
+-- ==========================
+function buyMultipleStacks(itemList, isGear, stackAmount, repeatTimes)
+    local remote = isGear and buyGearRemote or buySeedRemote
+    task.spawn(function()
+        for repeatIndex = 1, repeatTimes do
+            for _, itemName in ipairs(itemList) do
+                for i = 1, stackAmount do
+                    pcall(function()
+                        remote:FireServer(itemName)
+                    end)
+                    task.wait(0.1)
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+end
+
 
 -- ==========================
 -- Loop Auto Buy Gear & Seed
