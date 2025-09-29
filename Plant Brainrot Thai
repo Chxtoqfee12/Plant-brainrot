@@ -616,7 +616,7 @@ end
 
 local selectedPlayer = config.selectedPlayer or nil
 local playerDropdown = MiscTab:AddDropdown({
-    Name = "👤 เลือกผู้เล่น",
+    Name = "👤 เลือกผู้เล่นที่ต้องการวาป",
     Default = selectedPlayer or "ไม่มีผู้เล่น",
     Options = getOtherPlayers(),
     Callback = function(value)
@@ -637,7 +637,7 @@ end)
 -- ปุ่ม Teleport to Player
 -- ==========================
 MiscTab:AddButton({
-    Name = "📍 ย้ายไปยังผู้เล่น",
+    Name = "📍 วาปไปยังผู้เล่น",
     Callback = function()
         if selectedPlayer then
             local target = game.Players:FindFirstChild(selectedPlayer)
