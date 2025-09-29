@@ -1,0 +1,337 @@
+-- ==========================
+-- โหลด OrionLib
+-- ==========================
+local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/script-admin-chx/refs/heads/SRC/ChxOn.lib'))()
+
+-- ==========================
+-- สร้าง Window
+-- ==========================
+local Window = OrionLib:MakeWindow({
+    Name = "CHX Plant vs Brainrot V1.1",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "CHXPlantBrainrot"
+})
+
+-- ==========================
+-- สร้าง Tabs เปล่า ๆ
+-- ==========================
+local FarmTab = Window:MakeTab({
+    Name = "🚜 ฟาร์ม",
+    Icon = "rbxassetid://6031075936"
+})
+-- ==========================
+-- ตัวแปร
+-- ==========================
+local player = game.Players.LocalPlayer
+local homeSaved = false
+local homePosition = nil
+local autoAttackEnabled = false
+
+-- ==========================
+-- ฟังก์ชันบันทึกบ้าน
+-- ==========================
+local function saveHomePosition()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        homePosition = player.Character.HumanoidRootPart.Position
+        homeSaved = true
+        OrionLib:MakeNotification({
+            Name = "บันทึกบ้านแล้ว",
+            Content = "ตำแหน่งบ้านถูกบันทึกเรียบร้อย",
+            Image = "rbxassetid://6031075936",
+            Time = 3
+        })
+    end
+end
+
+-- ==========================
+-- ปุ่มบันทึกบ้าน
+-- ==========================
+FarmTab:AddButton({
+    Name = "💾 บันทึกตำแหน่งบ้าน",
+    Callback = saveHomePosition
+})
+
+-- ==========================
+-- Toggle Auto Attack
+-- ==========================
+FarmTab:AddToggle({
+    Name = "⚔️ โจมตี Brainrot อัตโนมัติ",
+    Default = false,
+    Callback = function(value)
+        if not homeSaved and value then
+            OrionLib:MakeNotification({
+                Name = "⚠️ คำเตือน",
+                Content = "กรุณาบันทึกบ้านก่อนใช้งาน",
+                Image = "rbxassetid://6031075936",
+                Time = 3
+            })
+            autoAttackEnabled = false
+            return
+        end
+        autoAttackEnabled = value
+    end
+})
+
+-- ==========================
+-- ตัวแปรเพิ่มเติม
+-- ==========================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+
+local floatHeight = 3
+local lerpSpeed = 0.5
+local startFarming = false
+local hasWarpedToHome = false
+local sellingEnabled = false
+local cooldownTime = 20
+local lastSellTime = 0
+
+-- ==========================
+-- ฟังก์ชันหา Brainrots
+-- ==========================
+local function getBrainrots()
+    local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
+    if not folder then return {} end
+    local brainrots = {}
+    for _, v in ipairs(folder:GetChildren()) do
+        if v:IsA("Model") then
+            table.insert(brainrots, v)
+        end
+    end
+    return brainrots
+end
+
+-- ==========================
+-- ฟังก์ชัน Equip Bat
+-- ==========================
+local function equipLeatherGripBat()
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        local bat = backpack:FindFirstChild("Leather Grip Bat")
+        if bat and player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid:EquipTool(bat)
+        end
+    end
+end
+
+-- ==========================
+-- Toggle Auto Sell Brainrot
+-- ==========================
+FarmTab:AddToggle({
+    Name = "💰 ขาย Brainrot อัตโนมัติ",
+    Default = false,
+    Callback = function(value)
+        sellingEnabled = value
+        OrionLib:MakeNotification({
+            Name = "Auto Sell Brainrot",
+            Content = value and "✅ เปิดใช้งานแล้ว" or "❌ ปิดการทำงานแล้ว",
+            Image = "rbxassetid://6031075936",
+            Time = 3
+        })
+    end
+})
+
+-- ==========================
+-- Loop Auto Attack + Auto Sell
+-- ==========================
+task.spawn(function()
+    while true do
+        task.wait(0.03)
+        -- Auto Attack
+        if autoAttackEnabled and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if hrp and humanoid then
+                humanoid.PlatformStand, humanoid.Sit = false, false
+                hrp.Velocity = Vector3.zero
+
+                if not hasWarpedToHome and homeSaved and homePosition then
+                    hrp.CFrame = CFrame.new(homePosition)
+                    hasWarpedToHome = true
+                    wait(0.5)
+                    startFarming = true
+                end
+
+                if startFarming then
+                    local brainrots = getBrainrots()
+                    local closest, minDist = nil, math.huge
+                    for _, enemy in ipairs(brainrots) do
+                        if enemy and enemy.Parent then
+                            local part = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildWhichIsA("BasePart")
+                            if part then
+                                local dist = (part.Position - hrp.Position).Magnitude
+                                if dist < minDist then
+                                    closest = enemy
+                                    minDist = dist
+                                end
+                            end
+                        end
+                    end
+
+                    if closest and closest.Parent then
+                        local targetPart = closest:FindFirstChild("HumanoidRootPart") or closest:FindFirstChildWhichIsA("BasePart")
+                        if targetPart then
+                            local newPos = hrp.Position:Lerp(Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z), lerpSpeed)
+                            hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
+
+                            -- ใส่อาวุธก่อนตี
+                            local tool = player.Character:FindFirstChildOfClass("Tool")
+                            if not tool or tool.Name ~= "Leather Grip Bat" then
+                                equipLeatherGripBat()
+                            end
+
+                            -- ตี Brainrot
+                            local idObj = closest:FindFirstChild("ID")
+                            local idValue = idObj and idObj.Value or closest.Name
+                            pcall(function() attackRemote:FireServer({{idValue}}) end)
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Auto Sell Brainrot
+        if sellingEnabled and tick() - lastSellTime >= cooldownTime then
+            pcall(function() sellRemote:FireServer() end)
+            lastSellTime = tick()
+        end
+    end
+end)
+
+
+-- ==========================
+-- ประกาศรายการ Gear และ Seed
+-- ==========================
+local gearsItems = {"Water Bucket","Frost Grenade","Banana Gun","Frost Blower","Carrot Launcher"}
+local seedsItems = {"Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Seed","Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Grape Seed","Cocotank Seed","Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed","Shroombino Seed"}
+
+local autoBuyGears = {}
+local autoBuySeeds = {}
+for _, gearName in ipairs(gearsItems) do
+    autoBuyGears[gearName] = false
+end
+for _, seedName in ipairs(seedsItems) do
+    autoBuySeeds[seedName] = false
+end
+
+local buyAllGearsEnabled = false
+local buyAllSeedsEnabled = false
+
+-- ==========================
+-- สร้าง Tab ร้านค้า
+-- ==========================
+local ShopTab = Window:MakeTab({
+    Name = "🛒 ร้านค้า",
+    Icon = "rbxassetid://6031075936"
+})
+
+-- Toggle ซื้อ Gear ทั้งหมด
+ShopTab:AddToggle({
+    Name = "ซื้อ Gear ทั้งหมดอัตโนมัติ",
+    Default = false,
+    Callback = function(state)
+        buyAllGearsEnabled = state
+    end
+})
+
+-- Toggle ซื้อ Seed ทั้งหมด
+ShopTab:AddToggle({
+    Name = "ซื้อ Seed ทั้งหมดอัตโนมัติ",
+    Default = false,
+    Callback = function(state)
+        buyAllSeedsEnabled = state
+    end
+})
+
+-- Toggle Gear รายตัว
+for i = 1, #gearsItems do
+    local gearName = gearsItems[i]
+    ShopTab:AddToggle({
+        Name = gearName,
+        Default = false,
+        Callback = function(state)
+            autoBuyGears[gearName] = state
+        end
+    })
+end
+
+-- Toggle Seed รายตัว
+for i = 1, #seedsItems do
+    local seedName = seedsItems[i]
+    ShopTab:AddToggle({
+        Name = seedName,
+        Default = false,
+        Callback = function(state)
+            autoBuySeeds[seedName] = state
+        end
+    })
+end
+
+-- ==========================
+-- ฟังก์ชันซื้อ Gear / Seed
+-- ==========================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local buyGearRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyGear")
+local buySeedRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyItem")
+
+local function buyGear(gearName)
+    pcall(function() buyGearRemote:FireServer(gearName) end)
+end
+
+local function buySeed(seedName)
+    pcall(function() buySeedRemote:FireServer(seedName) end)
+end
+
+-- ==========================
+-- Loop Auto Buy Gear & Seed
+-- ==========================
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+
+        -- ซื้อ Gear
+        if buyAllGearsEnabled then
+            for _, gearName in ipairs(gearsItems) do
+                buyGear(gearName)
+                task.wait(0.15) -- เวลารอให้เกมรับ Remote
+            end
+        else
+            for gearName, state in pairs(autoBuyGears) do
+                if state then
+                    buyGear(gearName)
+                    task.wait(0.15)
+                end
+            end
+        end
+
+        -- ซื้อ Seed
+        if buyAllSeedsEnabled then
+            for _, seedName in ipairs(seedsItems) do
+                buySeed(seedName)
+                task.wait(0.15)
+            end
+        else
+            for seedName, state in pairs(autoBuySeeds) do
+                if state then
+                    buySeed(seedName)
+                    task.wait(0.15)
+                end
+            end
+        end
+    end
+end)
+
+
+
+
+local MiscTab = Window:MakeTab({
+    Name = "⚙️ อื่นๆ",
+    Icon = "rbxassetid://6031075936"
+})
+
+-- ==========================
+-- เรียก Init เพื่อเปิด UI
+-- ==========================
+OrionLib:Init()
