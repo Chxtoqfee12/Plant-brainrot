@@ -228,6 +228,13 @@ local ShopTab = Window:MakeTab({
 })
 
 -- ==========================
+-- Section: Gears Shop
+-- ==========================
+local GearsSection = ShopTab:AddSection({
+    Name = "⚔️ Gears Shop"
+})
+
+-- ==========================
 -- ปรับ Toggle ซื้อ Gear ทั้งหมด
 -- ==========================
 ShopTab:AddToggle({
@@ -253,6 +260,13 @@ for i = 1, #gearsItems do
         end
     })
 end
+
+-- ==========================
+-- Section: Seeds Shop
+-- ==========================
+local SeedsSection = ShopTab:AddSection({
+    Name = "🌱 Seeds Shop"
+})
 
 -- ==========================
 -- ปรับ Toggle ซื้อ Seed ทั้งหมด
@@ -328,13 +342,13 @@ task.spawn(function()
         if buyAllGearsEnabled then
             for _, gearName in ipairs(gearsItems) do
                 buyGear(gearName)
-                task.wait(0.15) -- เวลารอให้เกมรับ Remote
+                task.wait(0.5) -- เวลารอให้เกมรับ Remote
             end
         else
             for gearName, state in pairs(autoBuyGears) do
                 if state then
                     buyGear(gearName)
-                    task.wait(0.15)
+                    task.wait(0.5)
                 end
             end
         end
@@ -343,13 +357,13 @@ task.spawn(function()
         if buyAllSeedsEnabled then
             for _, seedName in ipairs(seedsItems) do
                 buySeed(seedName)
-                task.wait(0.15)
+                task.wait(0.5)
             end
         else
             for seedName, state in pairs(autoBuySeeds) do
                 if state then
                     buySeed(seedName)
-                    task.wait(0.15)
+                    task.wait(0.5)
                 end
             end
         end
