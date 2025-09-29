@@ -163,20 +163,12 @@ local function getBrainrots()
     return brainrots
 end
 
--- ==========================
--- Toggle Auto Sell Brainrot
--- ==========================
 FarmTab:AddToggle({
     Name = "💰 ขาย Brainrot ทั้งหมดทุก20วินาที",
     Default = false,
     Callback = function(value)
         sellingEnabled = value
-        OrionLib:MakeNotification({
-            Name = "Auto Sell Brainrot",
-            Content = value and "✅ เปิดใช้งานแล้ว" or "❌ ปิดการทำงานแล้ว",
-            Image = "rbxassetid://6031075936",
-            Time = 3
-        })
+        -- ไม่ต้องแจ้งเตือน
     end
 })
 
@@ -516,7 +508,7 @@ local Fram = MiscTab:AddSection({
 -- Anti-AFK
 -- ==========================
 MiscTab:AddToggle({
-    Name = "🛡️ Anti-AFK",
+    Name = "🛡️ Anti-AFK 20 นาที",
     Default = config.antiAFK or false,
     Callback = function(value)
         config.antiAFK = value
