@@ -531,7 +531,7 @@ task.spawn(function()
 end)
 
 -- ==========================
--- WalkSpeed & JumpPower
+-- WalkSpeed & JumpPower (ล็อคค่า)
 -- ==========================
 MiscTab:AddSlider({
     Name = "🏃‍♂️ ความเร็วเดิน",
@@ -539,7 +539,6 @@ MiscTab:AddSlider({
     Max = 500,
     Default = config.walkSpeed or humanoid.WalkSpeed,
     Callback = function(value)
-        humanoid.WalkSpeed = value
         config.walkSpeed = value
         saveConfig()
     end
@@ -551,12 +550,27 @@ MiscTab:AddSlider({
     Max = 500,
     Default = config.jumpPower or humanoid.JumpPower,
     Callback = function(value)
-        humanoid.JumpPower = value
         config.jumpPower = value
         saveConfig()
     end
 })
 
+-- ฟังก์ชันล็อคค่า WalkSpeed และ JumpPower
+task.spawn(function()
+    while true do
+        task.wait(0.1) -- ตรวจสอบทุก 0.1 วินาที
+        if config.walkSpeed then
+            pcall(function()
+                humanoid.WalkSpeed = config.walkSpeed
+            end)
+        end
+        if config.jumpPower then
+            pcall(function()
+                humanoid.JumpPower = config.jumpPower
+            end)
+        end
+    end
+end)
 -- ==========================
 -- Dropdown Time of Day
 -- ==========================
