@@ -645,14 +645,20 @@ function OrionLib:MakeWindow(WindowConfig)
 	AddDraggingFunctionality(DragPoint, MainWindow)
 
 	AddConnection(CloseBtn.MouseButton1Up, function()
-		MainWindow.Visible = false
-		UIHidden = true
-		OrionLib:MakeNotification({
-			Name = "Interface Hidden",
-			Content = "Tap RightShift to reopen the interface",
-			Time = 5
-		})
-		WindowConfig.CloseCallback()
+    	MainWindow.Visible = false
+    	UIHidden = true
+
+    	-- รีเซ็ตค่าทั้งหมด
+    	resetAllSettings()
+
+    	-- แจ้งเป็นภาษาไทย
+    	OrionLib:MakeNotification({
+        	Name = "ปิด UI เรียบร้อย",
+        	Content = "ปิด UI และปิดสคริปต์ทั้งหมดแล้ว\nหากต้องการใช้งานอีกครั้ง กรุณารันสคริปต์ใหม่",
+        	Time = 5
+    	})
+
+    	-- ไม่ต้องเรียก CloseCallback เพราะ UI ปิดแล้ว
 	end)
 
 	AddConnection(UserInputService.InputBegan, function(Input)
