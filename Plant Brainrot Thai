@@ -622,7 +622,7 @@ end
 
 local selectedPlayer = config.selectedPlayer or nil
 local playerDropdown = MiscTab:AddDropdown({
-    Name = "👤 เลือกผู้เล่นที่ต้องการวาป",
+    Name = "👤 เลือกผู้เล่นที่ต้องการวาปหรือยิงใส่",
     Default = selectedPlayer or "ไม่มีผู้เล่น",
     Options = getOtherPlayers(),
     Callback = function(value)
