@@ -675,6 +675,55 @@ MiscTab:AddButton({
 })
 
 -- ==========================
+-- ปุ่มยิง Carrot Launcher ไปยังผู้เล่น
+-- ==========================
+MiscTab:AddButton({
+    Name = "🥕 ยิง Carrot Launcher ไปยังผู้เล่น",
+    Callback = function()
+        if selectedPlayer then
+            local target = game.Players:FindFirstChild(selectedPlayer)
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local targetPos = target.Character.HumanoidRootPart.Position
+
+                local args = {
+                    {
+                        Toggle = true,
+                        Tool = player:WaitForChild("Backpack"):FindFirstChild("[x64] Carrot Launcher"),
+                        Time = 0.25, -- ปรับเวลาตามต้องการ
+                        Pos = Vector3.new(targetPos.X, targetPos.Y, targetPos.Z)
+                    }
+                }
+
+                game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+                    :WaitForChild("UseItem"):FireServer(unpack(args))
+
+                OrionLib:MakeNotification({
+                    Name = "ยิงเรียบร้อย",
+                    Content = "ยิงไปยัง "..selectedPlayer,
+                    Image = "rbxassetid://6031075936",
+                    Time = 3
+                })
+            else
+                OrionLib:MakeNotification({
+                    Name = "ล้มเหลว",
+                    Content = "ไม่พบตัวละครของผู้เล่นนั้น",
+                    Image = "rbxassetid://6031075936",
+                    Time = 3
+                })
+            end
+        else
+            OrionLib:MakeNotification({
+                Name = "ล้มเหลว",
+                Content = "ยังไม่ได้เลือกผู้เล่น",
+                Image = "rbxassetid://6031075936",
+                Time = 3
+            })
+        end
+    end
+})
+
+
+-- ==========================
 -- โหลดค่าจาก config เมื่อเริ่มเกม
 -- ==========================
 if config.walkSpeed then
