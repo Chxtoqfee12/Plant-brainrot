@@ -647,12 +647,12 @@ function OrionLib:MakeWindow(WindowConfig)
 	AddConnection(CloseBtn.MouseButton1Up, function()
 		MainWindow.Visible = false
 		UIHidden = true
+        resetAllSettings()
 		OrionLib:MakeNotification({
 			Name = "ปิด UI เรียบร้อย",
-			Content = "ปิด UI เรียบร้อย",
+			Content = "ปิด UI เรียบร้อยฟ",
 			Time = 5
 		})
-		WindowConfig.CloseCallback()
 	end)
 
 	AddConnection(UserInputService.InputBegan, function(Input)
