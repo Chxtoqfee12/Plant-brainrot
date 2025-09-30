@@ -3,32 +3,6 @@
 -- ==========================
 local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/lib'))()
 
--- ฟังก์ชันรีเซ็ตค่าทั้งหมด
-local function resetAllSettings()
-    -- ปิด Auto Attack / Farming
-    autoAttackEnabled = false
-    startFarming = false
-    hasWarpedToHome = false
-
-    -- ปิด Auto Sell
-    sellingEnabled = false
-
-    -- ปิด Auto Buy
-    buyAllGearsEnabled = false
-    buyAllSeedsEnabled = false
-    for k,_ in pairs(autoBuyGears) do autoBuyGears[k] = false end
-    for k,_ in pairs(autoBuySeeds) do autoBuySeeds[k] = false end
-
-    -- ปิด Misc / Anti-AFK / WalkSpeed / JumpPower
-    config.antiAFK = false
-    humanoid.WalkSpeed = 16 -- คืนค่า default
-    humanoid.JumpPower = 50 -- คืนค่า default
-
-    -- รีเซ็ต target player
-    selectedPlayer = nil
-end
-
-
 
 -- ==========================
 -- สร้าง Window
@@ -557,16 +531,14 @@ task.spawn(function()
     end
 end)
 
--- ==========================
--- WalkSpeed & JumpPower (ล็อคค่า)
--- ==========================
 MiscTab:AddSlider({
     Name = "🏃‍♂️ ความเร็วเดิน",
     Min = 16,
     Max = 500,
-    Default = config.walkSpeed or humanoid.WalkSpeed,
+    Default = humanoid.WalkSpeed,
     Callback = function(value)
         config.walkSpeed = value
+        humanoid.WalkSpeed = value -- ปรับ humanoid ทันที
         saveConfig()
     end
 })
@@ -575,29 +547,15 @@ MiscTab:AddSlider({
     Name = "🦘 ความสามารถกระโดด",
     Min = 50,
     Max = 500,
-    Default = config.jumpPower or humanoid.JumpPower,
+    Default = humanoid.JumpPower,
     Callback = function(value)
         config.jumpPower = value
+        humanoid.JumpPower = value -- ปรับ humanoid ทันที
         saveConfig()
     end
 })
 
--- ฟังก์ชันล็อคค่า WalkSpeed และ JumpPower
-task.spawn(function()
-    while true do
-        task.wait(0.1) -- ตรวจสอบทุก 0.1 วินาที
-        if config.walkSpeed then
-            pcall(function()
-                humanoid.WalkSpeed = config.walkSpeed
-            end)
-        end
-        if config.jumpPower then
-            pcall(function()
-                humanoid.JumpPower = config.jumpPower
-            end)
-        end
-    end
-end)
+
 -- ==========================
 -- Dropdown Time of Day
 -- ==========================
