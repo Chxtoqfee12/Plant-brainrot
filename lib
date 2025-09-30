@@ -651,15 +651,16 @@ function OrionLib:MakeWindow(WindowConfig)
     	-- รีเซ็ตค่าทั้งหมด
     	resetAllSettings()
 
-    	-- แจ้งเป็นภาษาไทย
+    	-- แจ้งเตือนภาษาไทย
     	OrionLib:MakeNotification({
         	Name = "ปิด UI เรียบร้อย",
         	Content = "ปิด UI และปิดสคริปต์ทั้งหมดแล้ว\nหากต้องการใช้งานอีกครั้ง กรุณารันสคริปต์ใหม่",
         	Time = 5
     	})
 
-    	-- ไม่ต้องเรียก CloseCallback เพราะ UI ปิดแล้ว
+    	-- ไม่ต้องเรียก CloseCallback เพราะเราต้องการให้ UI ปิดถาวร
 	end)
+
 
 	AddConnection(UserInputService.InputBegan, function(Input)
 		if Input.KeyCode == Enum.KeyCode.RightShift and UIHidden then
