@@ -647,18 +647,12 @@ function OrionLib:MakeWindow(WindowConfig)
 	AddConnection(CloseBtn.MouseButton1Up, function()
     	MainWindow.Visible = false
     	UIHidden = true
-
-    	-- รีเซ็ตค่าทั้งหมด
     	resetAllSettings()
-
-    	-- แจ้งเตือนภาษาไทย
     	OrionLib:MakeNotification({
         	Name = "ปิด UI เรียบร้อย",
         	Content = "ปิด UI",
         	Time = 5
     	})
-
-    	-- ไม่ต้องเรียก CloseCallback เพราะเราต้องการให้ UI ปิดถาวร
 	end)
 
 
