@@ -3,6 +3,27 @@
 -- ==========================
 local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/script-admin-chx/refs/heads/SRC/ChxOn.lib'))()
 
+-- ฟังก์ชันรีเซ็ตทุกค่า
+local function resetAllSettings()
+    autoAttackEnabled = false
+    startFarming = false
+    hasWarpedToHome = false
+
+    sellingEnabled = false
+
+    buyAllGearsEnabled = false
+    buyAllSeedsEnabled = false
+    for k,_ in pairs(autoBuyGears) do autoBuyGears[k] = false end
+    for k,_ in pairs(autoBuySeeds) do autoBuySeeds[k] = false end
+
+    config.antiAFK = false
+    humanoid.WalkSpeed = 16
+    humanoid.JumpPower = 50
+
+    selectedPlayer = nil
+end
+
+
 -- ==========================
 -- สร้าง Window
 -- ==========================
