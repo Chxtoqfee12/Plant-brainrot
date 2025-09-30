@@ -654,7 +654,7 @@ function OrionLib:MakeWindow(WindowConfig)
     	-- แจ้งเตือนภาษาไทย
     	OrionLib:MakeNotification({
         	Name = "ปิด UI เรียบร้อย",
-        	Content = "ปิด UI และปิดสคริปต์ทั้งหมดแล้ว\nหากต้องการใช้งานอีกครั้ง กรุณารันสคริปต์ใหม่",
+        	Content = "ปิด UI",
         	Time = 5
     	})
 
