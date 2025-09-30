@@ -57,9 +57,11 @@ local player = game.Players.LocalPlayer
 local homeSaved = false
 local homePosition = nil
 local autoAttackEnabled = false
-
--- ป้องกันแจ้งเตือนซ้ำ ๆ เมื่อเปิด Auto แต่ยังไม่ Save
 local warnedNoSave = false
+
+-- ตัวแปร loop
+local startFarming = false
+local hasWarpedToHome = false
 
 -- ==========================
 -- ฟังก์ชันบันทึกบ้าน
@@ -75,67 +77,51 @@ local function saveHomePosition()
             Image = "rbxassetid://6031075936",
             Time = 3
         })
-
-        -- ถ้า Auto Attack เปิดอยู่ ให้เริ่มกระบวนการ Warp/Start farming ทันที
-        if autoAttackEnabled then
-            -- รีเซ็ตสถานะ warp เพื่อให้ loop ทำการ warp ไปตำแหน่งที่เพิ่งบันทึก
-            hasWarpedToHome = false
-            startFarming = false
-            -- แจ้งเตือนว่าระบบจะเริ่มโจมตีเพราะตอนนี้บันทึกแล้ว
-            OrionLib:MakeNotification({
-                Name = "เริ่มโจมตี",
-                Content = "บันทึกเสร็จแล้ว — ระบบจะเริ่มโจมตี Brainrot ให้ทันที",
-                Image = "rbxassetid://6031075936",
-                Time = 3
-            })
-        end
     end
 end
 
--- ==========================
--- Section: Gears Shop
--- ==========================
-local Fram = FarmTab:AddSection({
+-- Section: ฟาร์ม
+FarmTab:AddSection({
     Name = "🚜 ฟาร์ม"
 })
 
--- ==========================
 -- ปุ่มบันทึกบ้าน
--- ==========================
 FarmTab:AddButton({
     Name = "💾 บันทึกตำแหน่งบ้าน",
     Callback = saveHomePosition
 })
 
--- ==========================
 -- Toggle Auto Attack
--- ==========================
 FarmTab:AddToggle({
     Name = "⚔️ โจมตี Brainrot อัตโนมัติ",
     Default = false,
     Callback = function(value)
-        -- เปิด/ปิดตามปกติ (แต่ถ้ายังไม่ save จะแจ้งเตือน ไม่บังคับปิด)
         autoAttackEnabled = value
 
-        if value and not homeSaved then
-            if not warnedNoSave then
-                OrionLib:MakeNotification({
-                    Name = "⚠️ โปรดบันทึกตำแหน่งบ้าน",
-                    Content = "กรุณากด 💾 บันทึกตำแหน่งบ้านก่อนเพื่อให้ระบบ Warp และเริ่มโจมตีได้",
-                    Image = "rbxassetid://6031075936",
-                    Time = 5
-                })
-                warnedNoSave = true
+        if value then
+            -- รีเซ็ตทุกครั้งที่เปิดใหม่
+            hasWarpedToHome = false
+            startFarming = false
+
+            if not homeSaved then
+                if not warnedNoSave then
+                    OrionLib:MakeNotification({
+                        Name = "⚠️ โปรดบันทึกตำแหน่งบ้าน",
+                        Content = "กรุณากด 💾 บันทึกตำแหน่งบ้านก่อนเพื่อให้ระบบ Warp และเริ่มโจมตีได้",
+                        Image = "rbxassetid://6031075936",
+                        Time = 5
+                    })
+                    warnedNoSave = true
+                end
+            else
+                warnedNoSave = false
             end
-        else
-            -- รีเซ็ต flag ถ้าปิด Auto หรือถ้มีบ้านแล้ว
-            warnedNoSave = false
         end
     end
 })
 
 -- ==========================
--- ตัวแปรเพิ่มเติม
+-- ตัวแปรระบบฟาร์ม
 -- ==========================
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
@@ -143,15 +129,12 @@ local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemS
 
 local floatHeight = 3
 local lerpSpeed = 0.5
-local startFarming = false
-local hasWarpedToHome = false
 local sellingEnabled = false
 local cooldownTime = 20
 local lastSellTime = 0
+local warnedNoBat = false
 
--- ==========================
 -- ฟังก์ชันหา Brainrots
--- ==========================
 local function getBrainrots()
     local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
     if not folder then return {} end
@@ -169,21 +152,15 @@ FarmTab:AddToggle({
     Default = false,
     Callback = function(value)
         sellingEnabled = value
-        -- ไม่ต้องแจ้งเตือน
     end
 })
-
--- ==========================
--- ตัวแปรเพิ่มเติมสำหรับแจ้งเตือน Bat
--- ==========================
-local warnedNoBat = false
 
 -- ==========================
 -- Loop Auto Attack + Auto Sell + Auto Equip Bat
 -- ==========================
 task.spawn(function()
     while true do
-        task.wait(0.005)  -- spam เร็วสุด (ปรับตามต้องการ)
+        task.wait(0.005)
 
         if autoAttackEnabled and player.Character then
             local hrp = player.Character:FindFirstChild("HumanoidRootPart")
@@ -206,13 +183,10 @@ task.spawn(function()
                             end
                         end
                     end
-
-                    -- Equip ถ้าเจอ Bat
                     if foundBat then
                         player.Character.Humanoid:EquipTool(foundBat)
                         tool = foundBat
                     else
-                        -- แจ้งเตือนถ้าไม่มี Bat
                         if not warnedNoBat then
                             OrionLib:MakeNotification({
                                 Name = "⚠️ โปรดถือ Bat",
@@ -229,15 +203,16 @@ task.spawn(function()
                     end
                 end
 
-                -- Warp to home
+                -- ===== Warp to home ทุกครั้งที่เปิด Auto =====
                 if not hasWarpedToHome and homeSaved and homePosition then
                     hrp.CFrame = CFrame.new(homePosition)
                     hasWarpedToHome = true
-                    wait(0.5)
-                    startFarming = true
+                    task.delay(1, function()
+                        startFarming = true
+                    end)
                 end
 
-                -- Start farming Brainrots
+                -- ===== Start farming Brainrots =====
                 if startFarming then
                     local brainrots = getBrainrots()
                     local closest, minDist = nil, math.huge
@@ -253,15 +228,12 @@ task.spawn(function()
                             end
                         end
                     end
-
                     if closest and closest.Parent then
                         local targetPart = closest:FindFirstChild("HumanoidRootPart") or closest:FindFirstChildWhichIsA("BasePart")
                         if targetPart then
                             local desiredPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z)
                             local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
                             hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
-
-                            -- Spam Attack รัว ๆ หลายครั้งต่อ loop
                             local idObj = closest:FindFirstChild("ID")
                             local idValue = idObj and idObj.Value or closest.Name
                             for i = 1, 6 do
