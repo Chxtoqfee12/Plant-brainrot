@@ -1,7 +1,7 @@
 -- ==========================
 -- โหลด OrionLib
 -- ==========================
-local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/script-admin-chx/refs/heads/SRC/ChxOn.lib'))()
+local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/lib'))()
 
 -- ฟังก์ชันรีเซ็ตทุกค่า
 local function resetAllSettings()
