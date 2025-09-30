@@ -674,9 +674,6 @@ MiscTab:AddButton({
     end
 })
 
--- ==========================
--- ปุ่มยิง Carrot Launcher ไปยังผู้เล่น
--- ==========================
 MiscTab:AddButton({
     Name = "🥕 ยิง Carrot Launcher ไปยังผู้เล่น",
     Callback = function()
@@ -685,11 +682,38 @@ MiscTab:AddButton({
             if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                 local targetPos = target.Character.HumanoidRootPart.Position
 
+                -- หา Tool ที่มีชื่อว่า "Carrot Launcher"
+                local tool = nil
+                for _, t in ipairs(player.Backpack:GetChildren()) do
+                    if t:IsA("Tool") and t.Name:find("Carrot Launcher") then
+                        tool = t
+                        break
+                    end
+                end
+                if not tool then
+                    for _, t in ipairs(player.Character:GetChildren()) do
+                        if t:IsA("Tool") and t.Name:find("Carrot Launcher") then
+                            tool = t
+                            break
+                        end
+                    end
+                end
+
+                if not tool then
+                    OrionLib:MakeNotification({
+                        Name = "ล้มเหลว",
+                        Content = "คุณไม่มี Carrot Launcher",
+                        Image = "rbxassetid://6031075936",
+                        Time = 3
+                    })
+                    return
+                end
+
                 local args = {
                     {
                         Toggle = true,
-                        Tool = player:WaitForChild("Backpack"):FindFirstChild("[x64] Carrot Launcher"),
-                        Time = 0.25, -- ปรับเวลาตามต้องการ
+                        Tool = tool,
+                        Time = 0.25,
                         Pos = Vector3.new(targetPos.X, targetPos.Y, targetPos.Z)
                     }
                 }
@@ -721,6 +745,7 @@ MiscTab:AddButton({
         end
     end
 })
+
 
 
 -- ==========================
