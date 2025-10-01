@@ -90,7 +90,7 @@ task.spawn(function()
 			local LocalPlayer = Players.LocalPlayer
 
 			-- 1. RemoveItem
-			local args1 = {"6d773081-6a5e-464f-bd4b-419e9fcde074"}
+			local args1 = {"7beda7a1-7eff-409f-afaa-22cd55af4485"}
 			ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RemoveItem"):FireServer(unpack(args1))
 			task.wait(0.5)
 
