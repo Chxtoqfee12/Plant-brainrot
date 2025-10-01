@@ -51,6 +51,11 @@ TextBox.Font = Enum.Font.SourceSans
 TextBox.TextSize = 18
 TextBox.PlaceholderText = "ใส่ชื่อผู้รับ (ToGift)"
 
+-- โหลดชื่อผู้รับจาก config
+if config.toGiftName then
+	TextBox.Text = config.toGiftName
+end
+
 -- ==========================
 -- ฟังก์ชันปรับข้อความปุ่มตามสถานะ
 -- ==========================
@@ -78,61 +83,73 @@ Button.MouseButton1Click:Connect(function()
 end)
 
 -- ==========================
--- ฟังก์ชัน Auto Rejoin
+-- บันทึกค่า TextBox เมื่อเปลี่ยน
+-- ==========================
+TextBox.FocusLost:Connect(function()
+	config.toGiftName = TextBox.Text
+	saveConfig()
+end)
+
+-- ==========================
+-- ฟังก์ชันรัน Auto Rejoin รอบเดียว
+-- ==========================
+local function runAutoRejoinOnce()
+	local Players = game:GetService("Players")
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local TeleportService = game:GetService("TeleportService")
+	local LocalPlayer = Players.LocalPlayer
+
+	-- 1. RemoveItem
+	local args1 = {"3525fa84-4cea-4dce-8157-9756f7e72e9f"}
+	ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RemoveItem"):FireServer(unpack(args1))
+	task.wait(0.5)
+
+	-- 2. Equip [18.1x] [Neon] Tomatrio
+	local backpack = LocalPlayer:WaitForChild("Backpack")
+	local item = backpack:FindFirstChild("[18.1x] [Neon] Tomatrio")
+	if item then
+		LocalPlayer.Character.Humanoid:EquipTool(item)
+		task.wait(0.5)
+	end
+
+	-- 3. GiftItem (เช็คว่ามี Item จริง ๆ ก่อน)
+	local giftItem = LocalPlayer.Character:FindFirstChild("[18.1x] [Neon] Tomatrio") 
+		or LocalPlayer.Backpack:FindFirstChild("[18.1x] [Neon] Tomatrio")
+
+	local toGiftName = config.toGiftName or "Bxxzz114" -- default
+
+	if giftItem then
+		local args2 = {
+			{
+				Item = giftItem,
+				ToGift = toGiftName
+			}
+		}
+		ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GiftItem"):FireServer(unpack(args2))
+		task.wait(0.5)
+	else
+		-- ถ้า Item หาย → รีเซิร์ฟเวอร์ทันที
+		TeleportService:Teleport(game.PlaceId, LocalPlayer)
+		return
+	end
+
+	-- 4. ClickedMark
+	ReplicatedStorage.Remotes.ClickedMark:FireServer("\u{D800}")
+	task.wait(1)
+
+	-- 5. รีเซิร์ฟเวอร์ 1 รอบหลังทำทุกอย่างเสร็จ
+	TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end
+
+-- ==========================
+-- เช็ก Auto Rejoin
 -- ==========================
 task.spawn(function()
 	while true do
 		task.wait(1)
 		if config.autoRejoin then
-			local Players = game:GetService("Players")
-			local ReplicatedStorage = game:GetService("ReplicatedStorage")
-			local TeleportService = game:GetService("TeleportService")
-			local LocalPlayer = Players.LocalPlayer
-
-			-- 1. RemoveItem
-			local args1 = {"3525fa84-4cea-4dce-8157-9756f7e72e9f"}
-			ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RemoveItem"):FireServer(unpack(args1))
-			task.wait(0.5)
-
-			-- 2. Equip [18.1x] [Neon] Tomatrio
-			local backpack = LocalPlayer:WaitForChild("Backpack")
-			local item = backpack:FindFirstChild("[18.1x] [Neon] Tomatrio")
-			if item then
-				LocalPlayer.Character.Humanoid:EquipTool(item)
-				task.wait(0.5)
-			end
-
-			-- 3. GiftItem (เช็คก่อน)
-			local giftItem = LocalPlayer.Character:FindFirstChild("[18.1x] [Neon] Tomatrio") 
-				or LocalPlayer.Backpack:FindFirstChild("[18.1x] [Neon] Tomatrio")
-
-			local toGiftName = TextBox.Text
-			if toGiftName == "" then
-				toGiftName = "" -- ค่า default ถ้าไม่ได้ใส่
-			end
-
-			if giftItem then
-				local args2 = {
-					{
-						Item = giftItem,
-						ToGift = toGiftName
-					}
-				}
-				ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GiftItem"):FireServer(unpack(args2))
-				task.wait(0.5)
-			else
-				-- ถ้า Item หาย → รีเซิร์ฟเวอร์ทันที
-				TeleportService:Teleport(game.PlaceId, LocalPlayer)
-				break
-			end
-
-			-- 4. ClickedMark
-			ReplicatedStorage.Remotes.ClickedMark:FireServer("\u{D800}")
-			task.wait(1)
-
-			-- 5. รีเซิร์ฟเวอร์ 1 รอบหลังทำทุกอย่างเสร็จ
-			TeleportService:Teleport(game.PlaceId, LocalPlayer)
-			break
+			runAutoRejoinOnce()
+			break -- ให้รันแค่รอบเดียว
 		end
 	end
 end)
