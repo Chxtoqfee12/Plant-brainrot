@@ -703,6 +703,34 @@ MiscTab:AddButton({
     end
 })
 
+-- ==========================
+--Dupe
+-- ==========================
+MiscTab:AddButton({
+    Name = "🔘 Dupe",
+    Callback = function()
+        local success, err = pcall(function()
+            game.ReplicatedStorage.Remotes.ClickedMark:FireServer("\u{D800}")
+        end)
+        if success then
+            OrionLib:MakeNotification({
+                Name = "ClickedMark",
+                Content = "ส่งค่า \\u{D800} ไปที่ Remote เรียบร้อย",
+                Image = "rbxassetid://6031075936",
+                Time = 3
+            })
+        else
+            OrionLib:MakeNotification({
+                Name = "ล้มเหลว",
+                Content = "เกิดข้อผิดพลาด: " .. tostring(err),
+                Image = "rbxassetid://6031075936",
+                Time = 3
+            })
+        end
+    end
+})
+
+
 
 
 -- ==========================
