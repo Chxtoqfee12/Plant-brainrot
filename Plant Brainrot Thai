@@ -714,8 +714,8 @@ MiscTab:AddButton({
         end)
         if success then
             OrionLib:MakeNotification({
-                Name = "ClickedMark",
-                Content = "ส่งค่า \\u{D800} ไปที่ Remote เรียบร้อย",
+                Name = "Dupe",
+                Content = "Dupe เรียบร้อย",
                 Image = "rbxassetid://6031075936",
                 Time = 3
             })
