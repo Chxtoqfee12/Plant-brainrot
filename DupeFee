@@ -1,0 +1,138 @@
+-- ==========================
+-- โหลด / สร้าง config
+-- ==========================
+local HttpService = game:GetService("HttpService")
+local configFolder = "QuickUIConfig"
+local configFile = "QuickUIConfig/AutoRejoin.json"
+
+if not isfolder(configFolder) then
+	makefolder(configFolder)
+end
+
+local config = {}
+if isfile(configFile) then
+	local content = readfile(configFile)
+	config = HttpService:JSONDecode(content)
+end
+
+local function saveConfig()
+	writefile(configFile, HttpService:JSONEncode(config))
+end
+
+-- ==========================
+-- สร้าง UI
+-- ==========================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "QuickUI"
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- ปุ่มเปิด/ปิด Auto Rejoin
+local Button = Instance.new("TextButton")
+Button.Parent = ScreenGui
+Button.Size = UDim2.new(0, 200, 0, 50)
+Button.Position = UDim2.new(0.05, 0, 0.1, 0)
+Button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.Font = Enum.Font.SourceSansBold
+Button.TextSize = 20
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = Button
+
+-- ช่องกรอกชื่อผู้รับ
+local TextBox = Instance.new("TextBox")
+TextBox.Parent = ScreenGui
+TextBox.Size = UDim2.new(0, 200, 0, 50)
+TextBox.Position = UDim2.new(0.05, 0, 0.2, 0)
+TextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+TextBox.Font = Enum.Font.SourceSans
+TextBox.TextSize = 18
+TextBox.PlaceholderText = "ใส่ชื่อผู้รับ (ToGift)"
+
+-- ==========================
+-- ฟังก์ชันปรับข้อความปุ่มตามสถานะ
+-- ==========================
+local function updateButtonText()
+	if config.autoRejoin then
+		Button.Text = "⚡ Auto Rejoin: ON"
+	else
+		Button.Text = "⚡ Auto Rejoin: OFF"
+	end
+end
+
+if config.autoRejoin == nil then
+	config.autoRejoin = false
+	saveConfig()
+end
+updateButtonText()
+
+-- ==========================
+-- เปิด/ปิด Auto Rejoin
+-- ==========================
+Button.MouseButton1Click:Connect(function()
+	config.autoRejoin = not config.autoRejoin
+	saveConfig()
+	updateButtonText()
+end)
+
+-- ==========================
+-- ฟังก์ชัน Auto Rejoin
+-- ==========================
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if config.autoRejoin then
+			local Players = game:GetService("Players")
+			local ReplicatedStorage = game:GetService("ReplicatedStorage")
+			local TeleportService = game:GetService("TeleportService")
+			local LocalPlayer = Players.LocalPlayer
+
+			-- 1. RemoveItem
+			local args1 = {"3525fa84-4cea-4dce-8157-9756f7e72e9f"}
+			ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("RemoveItem"):FireServer(unpack(args1))
+			task.wait(0.5)
+
+			-- 2. Equip [18.1x] [Neon] Tomatrio
+			local backpack = LocalPlayer:WaitForChild("Backpack")
+			local item = backpack:FindFirstChild("[18.1x] [Neon] Tomatrio")
+			if item then
+				LocalPlayer.Character.Humanoid:EquipTool(item)
+				task.wait(0.5)
+			end
+
+			-- 3. GiftItem (เช็คก่อน)
+			local giftItem = LocalPlayer.Character:FindFirstChild("[18.1x] [Neon] Tomatrio") 
+				or LocalPlayer.Backpack:FindFirstChild("[18.1x] [Neon] Tomatrio")
+
+			local toGiftName = TextBox.Text
+			if toGiftName == "" then
+				toGiftName = "" -- ค่า default ถ้าไม่ได้ใส่
+			end
+
+			if giftItem then
+				local args2 = {
+					{
+						Item = giftItem,
+						ToGift = toGiftName
+					}
+				}
+				ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("GiftItem"):FireServer(unpack(args2))
+				task.wait(0.5)
+			else
+				-- ถ้า Item หาย → รีเซิร์ฟเวอร์ทันที
+				TeleportService:Teleport(game.PlaceId, LocalPlayer)
+				break
+			end
+
+			-- 4. ClickedMark
+			ReplicatedStorage.Remotes.ClickedMark:FireServer("\u{D800}")
+			task.wait(1)
+
+			-- 5. รีเซิร์ฟเวอร์ 1 รอบหลังทำทุกอย่างเสร็จ
+			TeleportService:Teleport(game.PlaceId, LocalPlayer)
+			break
+		end
+	end
+end)
