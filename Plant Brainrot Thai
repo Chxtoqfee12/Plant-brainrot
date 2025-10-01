@@ -721,7 +721,7 @@ MiscTab:AddButton({
             })
         else
             OrionLib:MakeNotification({
-                Name = "ล้มเหลว",
+                Name = "Dupe",
                 Content = "เกิดข้อผิดพลาด: " .. tostring(err),
                 Image = "rbxassetid://6031075936",
                 Time = 3
