@@ -583,18 +583,59 @@ local playerDropdown = MiscTab:AddDropdown({
     Default = selectedPlayer or "ไม่มีผู้เล่น",
     Options = getOtherPlayers(),
     Callback = function(value)
-        selectedPlayer = value
-        config.selectedPlayer = value
+        selectedPlayer = value ~= "ไม่มีผู้เล่น" and value or nil
+        config.selectedPlayer = selectedPlayer
         saveConfig()
     end
 })
 
+-- ==========================
+-- อัปเดตรายชื่อเมื่อมีคนเข้า/ออก
+-- ==========================
 game.Players.PlayerAdded:Connect(function()
     playerDropdown:UpdateOptions(getOtherPlayers())
+    -- ถ้ายังไม่ได้เลือกใคร → รีไป "ไม่มีผู้เล่น"
+    if not selectedPlayer then
+        playerDropdown:Set("ไม่มีผู้เล่น")
+    end
 end)
-game.Players.PlayerRemoving:Connect(function()
+
+game.Players.PlayerRemoving:Connect(function(plr)
     playerDropdown:UpdateOptions(getOtherPlayers())
+    -- ถ้าคนที่ออกเป็นคนที่เราเลือกอยู่ → รีไป "ไม่มีผู้เล่น"
+    if selectedPlayer == plr.Name then
+        selectedPlayer = nil
+        config.selectedPlayer = nil
+        saveConfig()
+        playerDropdown:Set("ไม่มีผู้เล่น")
+    end
 end)
+
+MiscTab:AddButton({
+    Name = "🔄 รีเฟรชผู้เล่น",
+    Callback = function()
+        -- โหลดรายชื่อใหม่
+        local newOptions = getOtherPlayers()
+        table.insert(newOptions, 1, "ไม่มีผู้เล่น") -- ใส่ "ไม่มีผู้เล่น" ไว้ด้านบน
+
+        playerDropdown:UpdateOptions(newOptions) -- อัปเดตรายชื่อจริง ๆ
+
+        -- รีเซ็ตกลับค่าเริ่มต้น
+        selectedPlayer = nil
+        config.selectedPlayer = nil
+        saveConfig()
+        playerDropdown:Set("ไม่มีผู้เล่น")
+
+        OrionLib:MakeNotification({
+            Name = "รีเฟรชแล้ว",
+            Content = "อัปเดตรายชื่อผู้เล่นใหม่เรียบร้อย",
+            Image = "rbxassetid://6031075936",
+            Time = 3
+        })
+    end
+})
+
+
 
 -- ==========================
 -- ปุ่ม Teleport to Player
@@ -666,6 +707,14 @@ MiscTab:AddButton({
                     return
                 end
 
+                -- ✅ ถือ Carrot Launcher ก่อน
+                local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid and tool.Parent == player.Backpack then
+                    humanoid:EquipTool(tool)
+                    task.wait(0.2) -- เว้นเล็กน้อยให้ถือเสร็จก่อนยิง
+                end
+
+                -- ✅ ยิงไปยังผู้เล่น
                 local args = {
                     {
                         Toggle = true,
@@ -702,6 +751,7 @@ MiscTab:AddButton({
         end
     end
 })
+
 
 
 
