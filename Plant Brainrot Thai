@@ -47,7 +47,7 @@ loadConfig()
 -- ==========================
 local FarmTab = Window:MakeTab({
     Name = "🚜 ฟาร์ม",
-    Icon = "rbxassetid://6031075936"
+    Icon = "rbxassetid://6031075936",
 })
 
 -- ==========================
@@ -57,6 +57,7 @@ local player = game.Players.LocalPlayer
 local homeSaved = false
 local homePosition = nil
 local autoAttackEnabled = false
+local autoCollectEnabled = false
 local warnedNoSave = false
 
 -- ตัวแปร loop
@@ -75,15 +76,15 @@ local function saveHomePosition()
             Name = "บันทึกบ้านแล้ว",
             Content = "ตำแหน่งบ้านถูกบันทึกเรียบร้อย",
             Image = "rbxassetid://6031075936",
-            Time = 3
+            Time = 3,
         })
     end
 end
 
+-- ==========================
 -- Section: ฟาร์ม
-FarmTab:AddSection({
-    Name = "🚜 ฟาร์ม"
-})
+-- ==========================
+FarmTab:AddSection({ Name = "🚜 ฟาร์ม" })
 
 -- ปุ่มบันทึกบ้าน
 FarmTab:AddButton({
@@ -97,22 +98,17 @@ FarmTab:AddToggle({
     Default = false,
     Callback = function(value)
         autoAttackEnabled = value
-
         if value then
-            -- รีเซ็ตทุกครั้งที่เปิดใหม่
             hasWarpedToHome = false
             startFarming = false
-
-            if not homeSaved then
-                if not warnedNoSave then
-                    OrionLib:MakeNotification({
-                        Name = "⚠️ โปรดบันทึกตำแหน่งบ้าน",
-                        Content = "กรุณากด 💾 บันทึกตำแหน่งบ้านก่อนเพื่อให้ระบบ Warp และเริ่มโจมตีได้",
-                        Image = "rbxassetid://6031075936",
-                        Time = 5
-                    })
-                    warnedNoSave = true
-                end
+            if not homeSaved and not warnedNoSave then
+                OrionLib:MakeNotification({
+                    Name = "⚠️ โปรดบันทึกตำแหน่งบ้าน",
+                    Content = "กรุณากด 💾 บันทึกตำแหน่งบ้านก่อนเพื่อ Warp และเริ่มโจมตี",
+                    Image = "rbxassetid://6031075936",
+                    Time = 5,
+                })
+                warnedNoSave = true
             else
                 warnedNoSave = false
             end
@@ -120,21 +116,50 @@ FarmTab:AddToggle({
     end
 })
 
--- ==========================
--- ตัวแปรระบบฟาร์ม
--- ==========================
+-- Toggle Auto Collect (เก็บเงินทุก 5 วิ)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
-local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+local equipRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("EquipBestBrainrots")
 
-local floatHeight = 3
-local lerpSpeed = 0.5
+FarmTab:AddToggle({
+    Name = "💸 เก็บเงินอัตโนมัติทุก 5 วิ",
+    Default = false,
+    Callback = function(value)
+        autoCollectEnabled = value
+        if value then
+            task.spawn(function()
+                while autoCollectEnabled do
+                    pcall(function()
+                        equipRemote:FireServer()
+                    end)
+                    task.wait(5)
+                end
+            end)
+        end
+    end
+})
+
+-- Toggle Auto Sell
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
 local sellingEnabled = false
 local cooldownTime = 20
 local lastSellTime = 0
+
+FarmTab:AddToggle({
+    Name = "💰 ขาย Brainrot ทั้งหมดทุก20วินาที",
+    Default = false,
+    Callback = function(value)
+        sellingEnabled = value
+    end
+})
+
+-- ==========================
+-- ฟังก์ชันหา Brainrots
+-- ==========================
+local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
+local floatHeight = 3
+local lerpSpeed = 0.5
 local warnedNoBat = false
 
--- ฟังก์ชันหา Brainrots
 local function getBrainrots()
     local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
     if not folder then return {} end
@@ -147,16 +172,8 @@ local function getBrainrots()
     return brainrots
 end
 
-FarmTab:AddToggle({
-    Name = "💰 ขาย Brainrot ทั้งหมดทุก20วินาที",
-    Default = false,
-    Callback = function(value)
-        sellingEnabled = value
-    end
-})
-
 -- ==========================
--- Loop Auto Attack + Auto Sell + Auto Equip Bat
+-- Loop Auto Attack + Auto Sell + Auto Equip Bat + Warp Home
 -- ==========================
 task.spawn(function()
     while true do
@@ -192,7 +209,7 @@ task.spawn(function()
                                 Name = "⚠️ โปรดถือ Bat",
                                 Content = "หา Bat ไม่เจอในกระเป๋า/ตัวละคร ดาเมจจะไม่เข้า",
                                 Image = "rbxassetid://6031075936",
-                                Time = 4
+                                Time = 4,
                             })
                             warnedNoBat = true
                             spawn(function()
