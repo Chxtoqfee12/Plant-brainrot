@@ -452,6 +452,8 @@ local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- โหลดค่า config (ถ้ายังไม่มีจะสร้างใหม่)
 local config = {}
@@ -469,13 +471,11 @@ local function saveConfig()
 end
 
 -- ==========================
--- Section: Gears Shop
+-- Section Player
 -- ==========================
 local Fram = MiscTab:AddSection({
     Name = "😎 Player"
 })
-
-
 
 -- ==========================
 -- Anti-AFK
@@ -493,16 +493,19 @@ MiscTab:AddToggle({
 task.spawn(function()
     local VirtualUser = game:GetService("VirtualUser")
     while true do
-        task.wait(60) -- ทุก ๆ 1 นาที
+        task.wait(60)
         if config.antiAFK then
             pcall(function()
-                VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-                VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+                VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
             end)
         end
     end
 end)
 
+-- ==========================
+-- WalkSpeed & JumpPower
+-- ==========================
 MiscTab:AddSlider({
     Name = "🏃‍♂️ ความเร็วเดิน",
     Min = 16,
@@ -510,7 +513,7 @@ MiscTab:AddSlider({
     Default = humanoid.WalkSpeed,
     Callback = function(value)
         config.walkSpeed = value
-        humanoid.WalkSpeed = value -- ปรับ humanoid ทันที
+        humanoid.WalkSpeed = value
         saveConfig()
     end
 })
@@ -522,14 +525,13 @@ MiscTab:AddSlider({
     Default = humanoid.JumpPower,
     Callback = function(value)
         config.jumpPower = value
-        humanoid.JumpPower = value -- ปรับ humanoid ทันที
+        humanoid.JumpPower = value
         saveConfig()
     end
 })
 
-
 -- ==========================
--- Dropdown Time of Day
+-- Time of Day Dropdown
 -- ==========================
 local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
 local selectedSky = config.selectedSky or skyOptions[1]
@@ -563,93 +565,105 @@ MiscTab:AddDropdown({
     end
 })
 
+-- ==========================
+-- Player Dropdown & Functions
+-- ==========================
+local SelectedPlayer = config.SelectedPlayer or nil
+local PlayerDropdown
 
--- ==========================
--- Dropdown เลือกผู้เล่น
--- ==========================
-local function getOtherPlayers()
+local function GetPlayersList()
     local list = {}
-    for _, p in ipairs(game.Players:GetPlayers()) do
+    for _, p in ipairs(Players:GetPlayers()) do
         if p ~= player then
             table.insert(list, p.Name)
         end
     end
+    if #list == 0 then
+        table.insert(list, "ไม่มีผู้เล่น")
+    end
     return list
 end
 
-local selectedPlayer = config.selectedPlayer or nil
-local playerDropdown = MiscTab:AddDropdown({
-    Name = "👤 เลือกผู้เล่นที่ต้องการวาปหรือยิงใส่",
-    Default = selectedPlayer or "ไม่มีผู้เล่น",
-    Options = getOtherPlayers(),
+-- สร้าง Dropdown เลือกผู้เล่น
+PlayerDropdown = MiscTab:AddDropdown({
+    Name = "👤 เลือกผู้เล่น",
+    Default = SelectedPlayer or (GetPlayersList()[1] or "ไม่มีผู้เล่น"),
+    Options = GetPlayersList(),
     Callback = function(value)
-        selectedPlayer = value ~= "ไม่มีผู้เล่น" and value or nil
-        config.selectedPlayer = selectedPlayer
+        if value == "ไม่มีผู้เล่น" then
+            SelectedPlayer = nil
+        else
+            SelectedPlayer = value
+        end
+        config.SelectedPlayer = SelectedPlayer
         saveConfig()
     end
 })
 
--- ==========================
--- อัปเดตรายชื่อเมื่อมีคนเข้า/ออก
--- ==========================
-game.Players.PlayerAdded:Connect(function()
-    playerDropdown:UpdateOptions(getOtherPlayers())
-    -- ถ้ายังไม่ได้เลือกใคร → รีไป "ไม่มีผู้เล่น"
-    if not selectedPlayer then
-        playerDropdown:Set("ไม่มีผู้เล่น")
+-- ฟังก์ชันอัปเดตรายชื่อผู้เล่นอัตโนมัติ
+local function RefreshDropdown()
+    if PlayerDropdown then
+        local newList = GetPlayersList()
+        PlayerDropdown:Refresh(newList, true)
+        -- ถ้า SelectedPlayer ยังอยู่ในเกม ให้เลือกค่าเดิม
+        if SelectedPlayer and table.find(newList, SelectedPlayer) then
+            PlayerDropdown:Set(SelectedPlayer)
+        else
+            SelectedPlayer = nil
+            config.SelectedPlayer = nil
+            saveConfig()
+            PlayerDropdown:Set(newList[1] or "ไม่มีผู้เล่น")
+        end
+    end
+end
+
+-- อัปเดตรายชื่ออัตโนมัติเมื่อผู้เล่นเข้า/ออก
+Players.PlayerAdded:Connect(function(plr)
+    if plr ~= player then
+        RefreshDropdown()
     end
 end)
 
-game.Players.PlayerRemoving:Connect(function(plr)
-    playerDropdown:UpdateOptions(getOtherPlayers())
-    -- ถ้าคนที่ออกเป็นคนที่เราเลือกอยู่ → รีไป "ไม่มีผู้เล่น"
-    if selectedPlayer == plr.Name then
-        selectedPlayer = nil
-        config.selectedPlayer = nil
+Players.PlayerRemoving:Connect(function(plr)
+    if SelectedPlayer == plr.Name then
+        SelectedPlayer = nil
+        config.SelectedPlayer = nil
         saveConfig()
-        playerDropdown:Set("ไม่มีผู้เล่น")
     end
+    RefreshDropdown()
 end)
 
-MiscTab:AddButton({
-    Name = "🔄 รีเฟรชผู้เล่น",
-    Callback = function()
-        -- โหลดรายชื่อใหม่
-        local newOptions = getOtherPlayers()
-        table.insert(newOptions, 1, "ไม่มีผู้เล่น") -- ใส่ "ไม่มีผู้เล่น" ไว้ด้านบน
 
-        playerDropdown:UpdateOptions(newOptions) -- อัปเดตรายชื่อจริง ๆ
-
-        -- รีเซ็ตกลับค่าเริ่มต้น
-        selectedPlayer = nil
-        config.selectedPlayer = nil
-        saveConfig()
-        playerDropdown:Set("ไม่มีผู้เล่น")
-
-        OrionLib:MakeNotification({
-            Name = "รีเฟรชแล้ว",
-            Content = "อัปเดตรายชื่อผู้เล่นใหม่เรียบร้อย",
-            Image = "rbxassetid://6031075936",
-            Time = 3
-        })
+-- ==========================
+-- ฟังก์ชันหา Carrot Launcher
+-- ==========================
+local function FindCarrotLauncher()
+    for _, tool in ipairs(player.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and string.find(tool.Name, "Carrot Launcher") then
+            return tool
+        end
     end
-})
-
-
+    for _, tool in ipairs(player.Character:GetChildren()) do
+        if tool:IsA("Tool") and string.find(tool.Name, "Carrot Launcher") then
+            return tool
+        end
+    end
+    return nil
+end
 
 -- ==========================
--- ปุ่ม Teleport to Player
+-- ปุ่มวาปไปหา
 -- ==========================
 MiscTab:AddButton({
-    Name = "📍 วาปไปยังผู้เล่น",
+    Name = "📍 วาปไปหา",
     Callback = function()
-        if selectedPlayer then
-            local target = game.Players:FindFirstChild(selectedPlayer)
+        if SelectedPlayer then
+            local target = Players:FindFirstChild(SelectedPlayer)
             if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                hrp.CFrame = target.Character.HumanoidRootPart.CFrame
+                hrp.CFrame = CFrame.new(target.Character.HumanoidRootPart.Position + Vector3.new(0,2,0))
                 OrionLib:MakeNotification({
                     Name = "Teleport",
-                    Content = "ย้ายไปหา "..selectedPlayer.." เรียบร้อย",
+                    Content = "ย้ายไปหา "..SelectedPlayer.." เรียบร้อย",
                     Image = "rbxassetid://6031075936",
                     Time = 3
                 })
@@ -672,67 +686,44 @@ MiscTab:AddButton({
     end
 })
 
+-- ==========================
+-- ปุ่มยิง Carrot Launcher
+-- ==========================
 MiscTab:AddButton({
-    Name = "🥕 ยิง Carrot Launcher ไปยังผู้เล่น",
+    Name = "🥕 ยิง Carrot Launcher",
     Callback = function()
-        if selectedPlayer then
-            local target = game.Players:FindFirstChild(selectedPlayer)
+        if SelectedPlayer then
+            local target = Players:FindFirstChild(SelectedPlayer)
             if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                local targetPos = target.Character.HumanoidRootPart.Position
+                local tool = FindCarrotLauncher()
+                if tool then
+                    humanoid:EquipTool(tool)
+                    task.wait(0.2)
 
-                -- หา Tool ที่มีชื่อว่า "Carrot Launcher"
-                local tool = nil
-                for _, t in ipairs(player.Backpack:GetChildren()) do
-                    if t:IsA("Tool") and t.Name:find("Carrot Launcher") then
-                        tool = t
-                        break
-                    end
-                end
-                if not tool then
-                    for _, t in ipairs(player.Character:GetChildren()) do
-                        if t:IsA("Tool") and t.Name:find("Carrot Launcher") then
-                            tool = t
-                            break
-                        end
-                    end
-                end
+                    local args = {
+                        {
+                            Toggle = true,
+                            Tool = tool,
+                            Time = 0.25,
+                            Pos = target.Character.HumanoidRootPart.Position
+                        }
+                    }
+                    ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UseItem"):FireServer(unpack(args))
 
-                if not tool then
+                    OrionLib:MakeNotification({
+                        Name = "ยิงเรียบร้อย",
+                        Content = "ยิงไปยัง "..SelectedPlayer,
+                        Image = "rbxassetid://6031075936",
+                        Time = 3
+                    })
+                else
                     OrionLib:MakeNotification({
                         Name = "ล้มเหลว",
                         Content = "คุณไม่มี Carrot Launcher",
                         Image = "rbxassetid://6031075936",
                         Time = 3
                     })
-                    return
                 end
-
-                -- ✅ ถือ Carrot Launcher ก่อน
-                local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                if humanoid and tool.Parent == player.Backpack then
-                    humanoid:EquipTool(tool)
-                    task.wait(0.2) -- เว้นเล็กน้อยให้ถือเสร็จก่อนยิง
-                end
-
-                -- ✅ ยิงไปยังผู้เล่น
-                local args = {
-                    {
-                        Toggle = true,
-                        Tool = tool,
-                        Time = 0.25,
-                        Pos = Vector3.new(targetPos.X, targetPos.Y, targetPos.Z)
-                    }
-                }
-
-                game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
-                    :WaitForChild("UseItem"):FireServer(unpack(args))
-
-                OrionLib:MakeNotification({
-                    Name = "ยิงเรียบร้อย",
-                    Content = "ยิงไปยัง "..selectedPlayer,
-                    Image = "rbxassetid://6031075936",
-                    Time = 3
-                })
             else
                 OrionLib:MakeNotification({
                     Name = "ล้มเหลว",
@@ -753,17 +744,12 @@ MiscTab:AddButton({
 })
 
 
-
-
 -- ==========================
--- โหลดค่าจาก config เมื่อเริ่มเกม
+-- โหลดค่า config ตอนเริ่มเกม
 -- ==========================
-if config.walkSpeed then
-    humanoid.WalkSpeed = config.walkSpeed
-end
-if config.jumpPower then
-    humanoid.JumpPower = config.jumpPower
-end
+if config.walkSpeed then humanoid.WalkSpeed = config.walkSpeed end
+if config.jumpPower then humanoid.JumpPower = config.jumpPower end
+
 
 
 -- ==========================
