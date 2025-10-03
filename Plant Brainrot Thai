@@ -603,7 +603,7 @@ end
 
 -- สร้าง Dropdown เลือกผู้เล่น
 PlayerDropdown = MiscTab:AddDropdown({
-    Name = "👤 เลือกผู้เล่น",
+    Name = "👤 เลือกผู้เล่นที่ต้องการ",
     Default = SelectedPlayer or (GetPlayersList()[1] or "ไม่มีผู้เล่น"),
     Options = GetPlayersList(),
     Callback = function(value)
