@@ -126,9 +126,9 @@ function Library:Window(title)
     Logo.BackgroundTransparency = 1.000
     Logo.Position = UDim2.new(0, 4, 0.5, 0)
     Logo.Size = UDim2.new(0, 26, 0, 30)
-    Logo.Image = "http://www.roblox.com/asset/?id=7803241868"
-    Logo.ImageColor3 = Color3.fromRGB(232, 17, 85)
-    
+    Logo.Image = "rbxassetid://7072718838" -- 🔽 เปลี่ยนเป็นโลโก้ใหม่ (icon สี่เหลี่ยมสวย)
+    Logo.ImageColor3 = Color3.fromRGB(0, 170, 255) -- ฟ้าโทน gaming
+
     -- Minimize Button (using minus icon)
     local Minimize = Instance.new("ImageButton")
     Minimize.Name = "Minimize"
@@ -138,26 +138,26 @@ function Library:Window(title)
     Minimize.BackgroundTransparency = 1.000
     Minimize.Position = UDim2.new(1, -30, 0.5, 0)
     Minimize.Size = UDim2.new(0, 20, 0, 20)
-    Minimize.Image = "rbxassetid://7733771811" -- Minus icon
-    Minimize.ImageColor3 = Color3.fromRGB(199, 199, 199)
-    Minimize.ScaleType = Enum.ScaleType.Crop
-    
+    Minimize.Image = "rbxassetid://7072719338" -- 🔽 เปลี่ยน icon ลบใหม่
+    Minimize.ImageColor3 = Color3.fromRGB(200, 200, 200)
+    Minimize.ScaleType = Enum.ScaleType.Fit
+
     -- Minimized Icon (initially hidden)
     local MinimizedIcon = Instance.new("ImageButton")
     MinimizedIcon.Name = "MinimizedIcon"
     MinimizedIcon.Parent = ui
     MinimizedIcon.AnchorPoint = Vector2.new(1, 1)
-    MinimizedIcon.BackgroundColor3 = Color3.fromRGB(232, 17, 85)
+    MinimizedIcon.BackgroundColor3 = Color3.fromRGB(0, 170, 255) -- 🔽 เปลี่ยนจากแดง → ฟ้า
     MinimizedIcon.BackgroundTransparency = 0
     MinimizedIcon.BorderSizePixel = 0
     MinimizedIcon.Position = UDim2.new(1, -20, 1, -20)
     MinimizedIcon.Size = UDim2.new(0, 40, 0, 40)
     MinimizedIcon.Visible = false
     MinimizedIcon.ZIndex = 10
-    MinimizedIcon.Image = "http://www.roblox.com/asset/?id=7803241868"
+    MinimizedIcon.Image = "rbxassetid://7072719185" -- 🔽 เปลี่ยนเป็น icon "window" ชัด ๆ
     
     local MinimizedCorner = Instance.new("UICorner")
-    MinimizedCorner.CornerRadius = UDim.new(0, 8)
+    MinimizedCorner.CornerRadius = UDim.new(0, 12) -- มนมากขึ้น
     MinimizedCorner.Parent = MinimizedIcon
     
     -- Make minimized icon draggable
