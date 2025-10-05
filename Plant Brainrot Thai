@@ -413,7 +413,7 @@ end
 
 
 EventTab:AddToggle({
-    Name = "🔁 ออโต้ทำเควส Prison Event",
+    Name = "🔁 ออโต้ทำเควส Prison Event [Beta]",
     Default = false,
     Callback = function(state)
         autoPrison = state
