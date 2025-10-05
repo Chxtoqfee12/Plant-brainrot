@@ -278,6 +278,158 @@ end)
 
 
 -- ==========================
+-- สร้าง Tabs เปล่า ๆ
+-- ==========================
+local EventTab = Window:MakeTab({
+    Name = "อีเวนท์",
+    Icon = "rbxassetid://6031075936",
+})
+
+-- ==========================
+-- Section: prison Event
+-- ==========================
+EventTab:AddSection({ Name = "Prison Event" })
+
+-- ==========================
+-- Toggle: ออโต้ทำเควส Prison Event
+-- ==========================
+local autoPrison = false
+
+EventTab:AddToggle({
+    Name = "🔁 ออโต้ทำเควส Prison Event",
+    Default = false,
+    Callback = function(state)
+        autoPrison = state
+
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+
+        -- รายชื่อ Brainrot
+        local brainrotList = {
+            "Alessio",
+            "Orcalero Orcala",
+            "Bandito Bobrito",
+            "Trippi Troppi",
+            "Bombardiro Crocodilo",
+            "Brr Brr Patapim",
+            "Ballerina Cappuccina",
+            "Bananita DolPhinita",
+            "Burbaloni Lulliloli",
+            "Cappuccino Assasino",
+            "Orcalcro Orcala",
+            "Svinino Bombondino",
+            "Bombini Gussini",
+            "Bandito Bobrito",
+            "Bombardiro Crocodilo",
+            "Elefanto Cocofanto",
+            "Trippi Troppi",
+            "Frigo Camelo",
+            "Bambini Crostini",
+            "Gangster Footera",
+            "Madung",
+            "Crazylone Pizaione"
+        }
+
+        if autoPrison then
+            OrionLib:MakeNotification({
+                Name = "เริ่มออโต้ Prison Event",
+                Content = "ระบบออโต้ทำเควสกำลังทำงาน...",
+                Image = "rbxassetid://6031075936",
+                Time = 3
+            })
+
+            task.spawn(function()
+                while autoPrison do
+                    local foundAny = false -- เช็กว่ามีไอเทมหรือไม่
+
+                    for _, brainName in ipairs(brainrotList) do
+                        if not autoPrison then break end
+
+                        local Backpack = LocalPlayer:FindFirstChild("Backpack")
+                        if not Backpack then
+                            task.wait(1)
+                            continue
+                        end
+
+                        -- หาชื่อบางส่วนที่ตรง
+                        local foundTool = nil
+                        for _, tool in ipairs(Backpack:GetChildren()) do
+                            if tool:IsA("Tool") and string.find(tool.Name, brainName, 1, true) then
+                                foundTool = tool
+                                break
+                            end
+                        end
+
+                        if foundTool then
+                            foundAny = true
+                            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                            if hum then
+                                hum:EquipTool(foundTool)
+                                task.wait(0.3)
+
+                                local args = { "TurnIn" }
+                                game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+                                    :WaitForChild("Events"):WaitForChild("Prison")
+                                    :WaitForChild("Interact"):FireServer(unpack(args))
+
+                                OrionLib:MakeNotification({
+                                    Name = "✅ ส่งเควส Prison Event",
+                                    Content = "ส่งเควสของ " .. brainName .. " แล้ว!",
+                                    Image = "rbxassetid://6031075936",
+                                    Time = 2
+                                })
+                            end
+                        else
+                            OrionLib:MakeNotification({
+                                Name = "❌ ไม่มีไอเทม",
+                                Content = "ไม่พบ " .. brainName .. " ในกระเป๋า!",
+                                Image = "rbxassetid://6031075936",
+                                Time = 1.5
+                            })
+                            -- ถ้าไม่มีไอเทมนี้เลย → หยุดทันที
+                            autoPrison = false
+                            OrionLib:MakeNotification({
+                                Name = "🛑 หยุดออโต้ Prison Event",
+                                Content = "ไม่พบ " .. brainName .. " หยุดการทำงานอัตโนมัติ",
+                                Image = "rbxassetid://6031075936",
+                                Time = 4
+                            })
+                            break
+                        end
+                        task.wait(0.6)
+                    end
+
+                    if not foundAny then
+                        autoPrison = false
+                        OrionLib:MakeNotification({
+                            Name = "🛑 หยุดออโต้ Prison Event",
+                            Content = "ไม่มีไอเทมในรายการใด ๆ เหลืออยู่",
+                            Image = "rbxassetid://6031075936",
+                            Time = 4
+                        })
+                        break
+                    end
+                end
+            end)
+        else
+            OrionLib:MakeNotification({
+                Name = "⏹️ หยุดออโต้ Prison Event",
+                Content = "ระบบออโต้ทำเควสถูกปิดแล้ว",
+                Image = "rbxassetid://6031075936",
+                Time = 3
+            })
+        end
+    end
+})
+
+
+
+
+
+
+
+
+-- ==========================
 -- ประกาศรายการ Gear และ Seed
 -- ==========================
 local gearsItems = {"Water Bucket","Frost Grenade","Banana Gun","Frost Blower","Carrot Launcher"}
