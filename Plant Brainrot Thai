@@ -8,7 +8,7 @@ local OrionLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxt
 -- สร้าง Window
 -- ==========================
 local Window = OrionLib:MakeWindow({
-    Name = "CHX Plant vs Brainrot V2.1.0",
+    Name = "CHX Plant vs Brainrot V2.0.1",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "CHXPlantBrainrot"
