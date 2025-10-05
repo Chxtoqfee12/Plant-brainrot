@@ -470,7 +470,7 @@ EventTab:AddToggle({
                                     :WaitForChild("Events"):WaitForChild("Prison")
                                     :WaitForChild("Interact"):FireServer("TurnIn")
                             end)
-                            task.wait(0.1)
+                            task.wait(1)  -- ⬅️ เปลี่ยนเวลาใส่เป็น 1 วินาที
                         end
                     end
 
@@ -486,7 +486,7 @@ EventTab:AddToggle({
                             :WaitForChild("Events"):WaitForChild("Prison")
                             :WaitForChild("Interact"):FireServer("ResetRequest")
                     end)
-                    task.wait(1)
+                    task.wait(0.05)
                 end
             end)
         else
@@ -494,6 +494,7 @@ EventTab:AddToggle({
         end
     end
 })
+
 
 
 -- ==========================
