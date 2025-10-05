@@ -281,7 +281,7 @@ end)
 -- Tab อีเวนท์
 -- ==========================
 local EventTab = Window:MakeTab({
-    Name = "อีเวนท์",
+    Name = "🎩 อีเวนท์",
     Icon = "rbxassetid://6031075936",
 })
 
@@ -396,7 +396,7 @@ end
 -- Slider ปรับ maxPerName
 -- ==========================
 EventTab:AddSlider({
-    Name = "จำนวนสูงสุดต่อชื่อ (สูงสุด 10)",
+    Name = "จำนวนตัวซ้ำสูงสุดต่อตัว (สูงสุด 10)",
     Min = 1,
     Max = 10,
     Default = maxPerName,
@@ -411,7 +411,7 @@ EventTab:AddSlider({
 -- Toggle AutoPrison
 -- ==========================
 EventTab:AddToggle({
-    Name = "🔁 ออโต้ทำเควส Prison Event",
+    Name = "🔁 ออโต้ทำเควส Prison Event [Beta]",
     Default = false,
     Callback = function(state)
         autoPrison = state
@@ -482,7 +482,7 @@ EventTab:AddToggle({
 -- ปุ่มขาย Brainrot Flexible (ครั้งเดียว)
 -- ==========================
 EventTab:AddButton({
-    Name = "💰 ขาย Brainrot Flexible",
+    Name = "💰 ขาย Brainrot ที่ไม่เกี่ยวกับEvent [Beta]",
     Callback = function()
         if not isSelling then
             startAutoSell()
