@@ -295,8 +295,11 @@ local maxPerName = 5
 local isSelling = false
 local prisonTask = nil
 local sellTask = nil
+local resetTask = nil
 
+-- ==========================
 -- ฟังก์ชันช่วย
+-- ==========================
 local function isBrainrotMatch(toolName, brainName)
     local cleanName = toolName:match("%] (.+)") or toolName
     return string.find(string.lower(cleanName), string.lower(brainName)) ~= nil
@@ -321,6 +324,8 @@ local function startAutoSell()
     if sellTask then return end
     sellTask = task.spawn(function()
         isSelling = true
+        print("[🛑] หยุด AutoPrison ชั่วคราวระหว่างขาย...")
+
         local brainrotList = {
             "Alessio","Orcalero Orcala","Bandito Bobrito","Trippi Troppi",
             "Bombardiro Crocodilo","Brr Brr Patapim","Ballerina Cappuccina",
@@ -330,36 +335,44 @@ local function startAutoSell()
             "Trippi Troppi","Frigo Camelo","Bambini Crostini",
             "Gangster Footera","Madung","Crazylone Pizaione"
         }
+
         local character = LocalPlayer.Character
         local humanoid = character and character:FindFirstChildOfClass("Humanoid")
         local Backpack = LocalPlayer:FindFirstChild("Backpack")
         if not Backpack or not humanoid then isSelling=false return end
 
-        -- ขายตัวเกิน maxPerName
+        -- นับจำนวนไอเทมใน brainrotList ที่มี kg
         local countTable = {}
         for _, item in ipairs(Backpack:GetChildren()) do
             if item:IsA("Tool") and not isBlacklisted(item.Name) then
-                for _, name in ipairs(brainrotList) do
-                    if isBrainrotMatch(item.Name, name) then
-                        countTable[name] = (countTable[name] or 0) + 1
+                local hasKG = string.find(item.Name, "%[%d+%.?%d* kg%]")
+                if hasKG then
+                    for _, name in ipairs(brainrotList) do
+                        if isBrainrotMatch(item.Name, name) then
+                            countTable[name] = (countTable[name] or 0) + 1
+                        end
                     end
                 end
             end
         end
 
-        for _, item in ipairs(Backpack:GetChildren()) do
-            if item:IsA("Tool") and not isBlacklisted(item.Name) then
-                for _, name in ipairs(brainrotList) do
-                    if isBrainrotMatch(item.Name, name) then
-                        local count = countTable[name] or 0
-                        if count > maxPerName then
+        -- ขายไอเทมใน brainrotList เกิน maxPerName
+        for _, name in ipairs(brainrotList) do
+            local remaining = countTable[name] or 0
+            if remaining > maxPerName then
+                local toSell = remaining - maxPerName
+                for _, item in ipairs(Backpack:GetChildren()) do
+                    if toSell <= 0 then break end
+                    if item:IsA("Tool") and not isBlacklisted(item.Name) and isBrainrotMatch(item.Name, name) then
+                        local hasKG = string.find(item.Name, "%[%d+%.?%d* kg%]")
+                        if hasKG then
                             for i=1,5 do pcall(function() humanoid:EquipTool(item) end) task.wait(0.1) end
                             if item.Parent == character then
                                 pcall(function()
-                                    ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell"):FireServer(true)
+                                    ReplicatedStorage.Remotes.ItemSell:FireServer(true)
                                 end)
-                                countTable[name]=countTable[name]-1
-                                task.wait(0.2)
+                                toSell = toSell - 1
+                                task.wait(0.05)
                             end
                         end
                     end
@@ -367,30 +380,121 @@ local function startAutoSell()
             end
         end
 
-        -- ขาย Brainrot นอกลิสต์
+        -- ขายไอเทมที่มี kg แต่ไม่อยู่ใน brainrotList และไม่ใช่ blacklist
         for _, item in ipairs(Backpack:GetChildren()) do
             if item:IsA("Tool") and not isBlacklisted(item.Name) then
-                local isBrainrot = string.find(item.Name, "%[%d+%.?%d* kg%]")
-                local inList=false
-                for _, name in ipairs(brainrotList) do
-                    if isBrainrotMatch(item.Name, name) then inList=true break end
-                end
-                if isBrainrot and not inList then
-                    for i=1,5 do pcall(function() humanoid:EquipTool(item) end) task.wait(0.1) end
-                    if item.Parent == character then
-                        pcall(function()
-                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell"):FireServer(true)
-                        end)
-                        task.wait(0.2)
+                local hasKG = string.find(item.Name, "%[%d+%.?%d* kg%]")
+                if hasKG then
+                    local inList = false
+                    for _, name in ipairs(brainrotList) do
+                        if isBrainrotMatch(item.Name, name) then
+                            inList = true
+                            break
+                        end
+                    end
+                    if not inList then
+                        for i=1,5 do pcall(function() humanoid:EquipTool(item) end) task.wait(0.05) end
+                        if item.Parent == character then
+                            pcall(function()
+                                ReplicatedStorage.Remotes.ItemSell:FireServer(true)
+                            end)
+                            task.wait(0.05)
+                        end
                     end
                 end
             end
         end
 
-        isSelling=false
-        sellTask=nil
+        print("[✅] ขายเสร็จแล้ว เปิด AutoPrison ต่อ")
+        isSelling = false
+        sellTask = nil
     end)
 end
+
+
+EventTab:AddToggle({
+    Name = "🔁 ออโต้ทำเควส Prison Event",
+    Default = false,
+    Callback = function(state)
+        autoPrison = state
+
+        -- ยกเลิก task เดิมก่อน
+        if prisonTask then task.cancel(prisonTask) prisonTask = nil end
+        if resetTask then task.cancel(resetTask) resetTask = nil end
+
+        if autoPrison then
+            local brainrotList = {
+                "Alessio","Orcalero Orcala","Bandito Bobrito","Trippi Troppi",
+                "Bombardiro Crocodilo","Brr Brr Patapim","Ballerina Cappuccina",
+                "Bananita DolPhinita","Burbaloni Lulliloli","Cappuccino Assasino",
+                "Orcalcro Orcala","Svinino Bombondino","Bombini Gussini",
+                "Bandito Bobrito","Bombardiro Crocodilo","Elefanto Cocofanto",
+                "Trippi Troppi","Frigo Camelo","Bambini Crostini",
+                "Gangster Footera","Madung","Crazylone Pizaione"
+            }
+
+            -- 🔁 วนถือ 1 ตัวต่อ Brainrot
+            prisonTask = task.spawn(function()
+                while autoPrison do
+                    if isSelling then
+                        print("[⛔] หยุดชั่วคราวระหว่างขาย...")
+                        repeat task.wait(1) until not isSelling or not autoPrison
+                    end
+
+                    local character = LocalPlayer.Character
+                    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                    local Backpack = LocalPlayer:FindFirstChild("Backpack")
+                    if not Backpack or not humanoid then
+                        task.wait(1)
+                        continue
+                    end
+
+                    -- 🔁 วน Brainrot List ทีละตัว
+                    for _, brainName in ipairs(brainrotList) do
+                        if not autoPrison or isSelling then break end
+
+                        -- หา Tool ตัวแรกในกระเป๋าที่ตรงกับ brainName
+                        local toolToUse = nil
+                        for _, tool in ipairs(Backpack:GetChildren()) do
+                            if tool:IsA("Tool") and not isBlacklisted(tool.Name) and isBrainrotMatch(tool.Name, brainName) then
+                                toolToUse = tool
+                                break
+                            end
+                        end
+
+                        -- ถือและทำ TurnIn ถ้ามี
+                        if toolToUse then
+                            pcall(function()
+                                humanoid:EquipTool(toolToUse)
+                                ReplicatedStorage:WaitForChild("Remotes")
+                                    :WaitForChild("Events"):WaitForChild("Prison")
+                                    :WaitForChild("Interact"):FireServer("TurnIn")
+                            end)
+                            task.wait(0.1)
+                        end
+                    end
+
+                    task.wait(0.3)
+                end
+            end)
+
+            -- ⚙️ ยิง ResetRequest ทุกๆ 1 วิ
+            resetTask = task.spawn(function()
+                while autoPrison do
+                    pcall(function()
+                        ReplicatedStorage:WaitForChild("Remotes")
+                            :WaitForChild("Events"):WaitForChild("Prison")
+                            :WaitForChild("Interact"):FireServer("ResetRequest")
+                    end)
+                    task.wait(1)
+                end
+            end)
+        else
+            print("[🛑] ปิด AutoPrison แล้ว หยุดทั้งหมด")
+        end
+    end
+})
+
 
 -- ==========================
 -- Slider ปรับ maxPerName
@@ -404,77 +508,6 @@ EventTab:AddSlider({
     ValueName = "ชิ้น",
     Callback = function(value)
         maxPerName = value
-    end
-})
-
--- ==========================
--- Toggle AutoPrison
--- ==========================
-EventTab:AddToggle({
-    Name = "🔁 ออโต้ทำเควส Prison Event [Beta]",
-    Default = false,
-    Callback = function(state)
-        autoPrison = state
-        if prisonTask then prisonTask:Cancel() prisonTask=nil end
-
-        if autoPrison then
-            prisonTask = task.spawn(function()
-                local brainrotList = {
-                    "Alessio","Orcalero Orcala","Bandito Bobrito","Trippi Troppi",
-                    "Bombardiro Crocodilo","Brr Brr Patapim","Ballerina Cappuccina",
-                    "Bananita DolPhinita","Burbaloni Lulliloli","Cappuccino Assasino",
-                    "Orcalero Orcala","Svinino Bombondino","Bombini Gussini",
-                    "Bandito Bobrito","Bombardiro Crocodilo","Elefanto Cocofanto",
-                    "Trippi Troppi","Frigo Camelo","Bambini Crostini",
-                    "Gangster Footera","Madung","Crazylone Pizaione"
-                }
-                local character = LocalPlayer.Character
-                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-
-                while autoPrison do
-                    if isSelling then task.wait(1) continue end
-
-                    local Backpack = LocalPlayer:FindFirstChild("Backpack")
-                    if not Backpack or not humanoid then task.wait(1) continue end
-
-                    -- เช็ค Crazylone Pizaione
-                    local hasCrazylone=false
-                    for _, tool in ipairs(Backpack:GetChildren()) do
-                        if tool:IsA("Tool") and isBrainrotMatch(tool.Name,"Crazylone Pizaione") then
-                            hasCrazylone=true
-                            break
-                        end
-                    end
-                    if not hasCrazylone then
-                        print("[⏳] รอ Crazylone Pizaione...")
-                        task.wait(1)
-                        continue
-                    end
-
-                    -- ทำ Prison Event
-                    for _, brainName in ipairs(brainrotList) do
-                        if not autoPrison or isSelling then break end
-                        local foundTool=nil
-                        for _, tool in ipairs(Backpack:GetChildren()) do
-                            if tool:IsA("Tool") and isBrainrotMatch(tool.Name,brainName) then
-                                foundTool=tool
-                                break
-                            end
-                        end
-                        if foundTool then
-                            for i=1,5 do pcall(function() humanoid:EquipTool(foundTool) end) task.wait(0.1) end
-                            if foundTool.Parent==character then
-                                pcall(function()
-                                    ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Events"):WaitForChild("Prison"):WaitForChild("Interact"):FireServer("TurnIn")
-                                end)
-                            end
-                        end
-                        task.wait(0.2)
-                    end
-                    task.wait(1)
-                end
-            end)
-        end
     end
 })
 
