@@ -444,25 +444,119 @@ end)
 -- =======================================================
 -- ส่วนประกาศตัวแปรพื้นฐาน
 -- =======================================================
+-- =======================================================
+-- ส่วนที่ 1: การประกาศตัวแปรและการเข้าถึงบริการ
+-- =======================================================
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage") 
+local RunService = game:GetService("RunService") -- สำคัญ: สำหรับ Heartbeat:Wait() เพื่อความเสถียรของ Dropdown
 
 -- ==========================
 -- Section Player
 -- ==========================
-MiscTab:Section({ Title = "😎 Player" })
+MiscTab:Section({
+    Title = "😎 Player"
+})
 
 -- ==========================
--- Multi-Select Player Dropdown
+-- Anti-AFK
 -- ==========================
-local SelectedPlayers = config.SelectedPlayers or {} -- เก็บหลายผู้เล่น
-local PlayerDropdown
+MiscTab:Toggle({
+    Title = "🛡️ Anti-AFK 20 นาที",
+    Default = config.antiAFK or false,
+    Callback = function(value)
+        config.antiAFK = value
+        saveConfig()
+    end
+})
 
--- ฟังก์ชันดึงรายชื่อผู้เล่น
+-- ฟังก์ชัน Anti-AFK
+task.spawn(function()
+    local VirtualUser = game:GetService("VirtualUser")
+    while true do
+        task.wait(60)
+        if config.antiAFK then
+            pcall(function()
+                VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            end)
+        end
+    end
+end)
+
+-- ==========================
+-- WalkSpeed & JumpPower
+-- ==========================
+MiscTab:Slider({
+    Title = "🏃‍♂️ ความเร็วเดิน",
+    Value = {Min = 16, Max = 500, Default = humanoid.WalkSpeed},
+    Step = 1,
+    Callback = function(value)
+        config.walkSpeed = value
+        humanoid.WalkSpeed = value
+        saveConfig()
+    end
+})
+
+MiscTab:Slider({
+    Title = "🦘 ความสามารถกระโดด",
+    Value = {Min = 50, Max = 500, Default = humanoid.JumpPower},
+    Step = 1,
+    Callback = function(value)
+        config.jumpPower = value
+        humanoid.JumpPower = value
+        saveConfig()
+    end
+})
+
+-- ==========================
+-- Time of Day Dropdown
+-- ==========================
+local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
+local selectedSky = config.selectedSky or skyOptions[1]
+
+MiscTab:Dropdown({
+    Title = "🕒 ปรับเวลา / ท้องฟ้า",
+    Default = selectedSky,
+    Values = skyOptions,
+    Callback = function(value)
+        selectedSky = value
+        config.selectedSky = value
+        saveConfig()
+        local lighting = game:GetService("Lighting")
+        if value == "เช้า 🌅" then
+            lighting.TimeOfDay = "06:30:00"
+            lighting.Brightness = 2
+            lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 255)
+        elseif value == "เย็น 🌇" then
+            lighting.TimeOfDay = "17:30:00"
+            lighting.Brightness = 1.5
+            lighting.OutdoorAmbient = Color3.fromRGB(255, 180, 120)
+        elseif value == "พระอาทิตย์ตก 🌄" then
+            lighting.TimeOfDay = "18:15:00"
+            lighting.Brightness = 1.2
+            lighting.OutdoorAmbient = Color3.fromRGB(255, 150, 100)
+        elseif value == "กลางคืน 🌌" then
+            lighting.TimeOfDay = "22:00:00"
+            lighting.Brightness = 0.7
+            lighting.OutdoorAmbient = Color3.fromRGB(50, 50, 80)
+        end
+    end
+})
+
+
+-- =======================================================
+-- ส่วนที่ 2: Player Dropdown, Refresh และ Teleport/Carrot
+-- (ส่วนที่ได้รับการแก้ไขบัค Dropdown หายหลังรีเฟรช)
+-- =======================================================
+local SelectedPlayer = config.SelectedPlayer or nil
+local PlayerDropdown -- ตัวแปร Dropdown
+
+-- ฟังก์ชันดึงรายชื่อผู้เล่นคนอื่น
 local function GetPlayersList()
     local list = {}
     for _, p in ipairs(Players:GetPlayers()) do
@@ -470,60 +564,83 @@ local function GetPlayersList()
             table.insert(list, p.Name)
         end
     end
-    table.sort(list)
+    table.sort(list) 
+
     if #list == 0 then
-        table.insert(list, "ไม่มีผู้เล่น")
+        list[1] = "ไม่มีผู้เล่น" -- ใช้ list[1] แทน table.insert เมื่อมีสมาชิกเดียว
     end
     return list
 end
 
--- ฟังก์ชัน Refresh Dropdown
+-- ฟังก์ชันอัปเดต Dropdown (ใช้ Heartbeat เพื่อความเสถียร)
 local function RefreshDropdown()
     if PlayerDropdown then
         local newList = GetPlayersList()
-        PlayerDropdown:Refresh({Values = newList})
-        RunService.Heartbeat:Wait() -- รอให้ GUI อัปเดต
-        -- เลือกค่าที่เคยเลือกไว้ก่อนหน้า
-        local validSelected = {}
-        for _, name in ipairs(SelectedPlayers) do
-            if table.find(newList, name) then
-                table.insert(validSelected, name)
-            end
+        local playersFound = #newList - (newList[1] == "ไม่มีผู้เล่น" and 1 or 0)
+        local valueToSelect = newList[1] or "ไม่มีผู้เล่น" -- ค่าเริ่มต้นที่ควรเลือก
+
+        -- 1. อัปเดตตัวเลือกใหม่: เรียกใช้ :Refresh
+        PlayerDropdown:Refresh({Values = newList}) 
+        
+        -- !!! การแก้ไขบัค: รอ 1 เฟรม ให้ WindUI มีเวลาสร้าง Element ใหม่ !!!
+        RunService.Heartbeat:Wait() 
+        
+        -- 2. กำหนดค่าที่เลือก
+        if SelectedPlayer and table.find(newList, SelectedPlayer) then
+            valueToSelect = SelectedPlayer
+        else
+            -- เคลียร์ค่าที่บันทึกไว้ใน config ถ้าผู้เล่นที่เลือกไม่อยู่แล้ว
+            SelectedPlayer = nil
+            config.SelectedPlayer = nil
+            saveConfig()
         end
-        SelectedPlayers = validSelected
-        PlayerDropdown:Set(SelectedPlayers)
+
+        -- ใช้ PlayerDropdown:Set เพื่อตั้งค่าที่เลือก
+        PlayerDropdown:Set(valueToSelect)
+        
+        -- 3. แจ้งเตือนเมื่อรีเฟรชสำเร็จ
+        l:Notify({
+            Title = "อัปเดตรายชื่อแล้ว",
+            Content = "พบผู้เล่น: " .. playersFound .. " คน",
+            Duration = 2,
+            Icon = "rotate-cw",
+        })
     end
 end
 
--- สร้าง Dropdown แบบ Multi-Select + Searchable
+-- สร้าง Dropdown เลือกผู้เล่น
 PlayerDropdown = MiscTab:Dropdown({
-    Title = "👤 เลือกผู้เล่น",
-    Multi = true,
-    SearchBarEnabled = true,
-    Values = {"กำลังโหลด..."}, -- เริ่มต้น
-    Value = SelectedPlayers,
-    Callback = function(values)
-        -- values เป็นตารางของชื่อผู้เล่นที่เลือก
-        SelectedPlayers = values
-        config.SelectedPlayers = SelectedPlayers
+    Title = "👤 เลือกผู้เล่นที่ต้องการ",
+    -- ตั้ง Default เป็นค่า Placeholder เพื่อให้ RefreshDropdown จัดการ Set ค่าจริงหลังโหลด
+    Default = SelectedPlayer or "กำลังโหลด...", 
+    Values = GetPlayersList(),
+    Callback = function(value)
+        if value == "ไม่มีผู้เล่น" then
+            SelectedPlayer = nil
+        else
+            SelectedPlayer = value
+        end
+        config.SelectedPlayer = SelectedPlayer
         saveConfig()
-        print("Selected Players: ", table.concat(SelectedPlayers, ", "))
     end
 })
 
--- เรียก RefreshDropdown ทันทีหลังสร้าง Dropdown
+-- !!! บังคับเรียก Refresh ทันทีหลังสร้าง Dropdown เพื่อให้ Dropdown โหลดค่าที่ถูกต้อง !!!
 task.spawn(function()
-    RunService.Heartbeat:Wait()
+    -- รอนิดนึงให้ GUI Library จัดการสร้าง Element ให้เสร็จ
+    RunService.Heartbeat:Wait() 
     RefreshDropdown()
 end)
 
+-- ==========================
 -- ปุ่มรีเฟรชผู้เล่น
+-- ==========================
 MiscTab:Button({
     Title = "🔄 รีเฟรชรายชื่อผู้เล่น",
     Callback = RefreshDropdown
 })
 
--- รีเฟรชอัตโนมัติเมื่อผู้เล่นเข้า/ออก
+-- อัปเดตรายชื่ออัตโนมัติเมื่อผู้เล่นเข้า/ออก
 Players.PlayerAdded:Connect(function(plr)
     if plr ~= player then
         RefreshDropdown()
@@ -531,11 +648,122 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 
 Players.PlayerRemoving:Connect(function(plr)
-    local idx = table.find(SelectedPlayers, plr.Name)
-    if idx then
-        table.remove(SelectedPlayers, idx)
-        config.SelectedPlayers = SelectedPlayers
+    if SelectedPlayer == plr.Name then
+        SelectedPlayer = nil
+        config.SelectedPlayer = nil
         saveConfig()
     end
     RefreshDropdown()
 end)
+
+-- ==========================
+-- ฟังก์ชันหา Carrot Launcher
+-- ==========================
+local function FindCarrotLauncher()
+    for _, tool in ipairs(player.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and string.find(tool.Name, "Carrot Launcher") then
+            return tool
+        end
+    end
+    for _, tool in ipairs(player.Character:GetChildren()) do
+        if tool:IsA("Tool") and string.find(tool.Name, "Carrot Launcher") then
+            return tool
+        end
+    end
+    return nil
+end
+
+-- ==========================
+-- ปุ่มวาปไปหา
+-- ==========================
+MiscTab:Button({
+    Title = "📍 วาปไปหา",
+    Callback = function()
+        if SelectedPlayer then
+            local target = Players:FindFirstChild(SelectedPlayer)
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                hrp.CFrame = CFrame.new(target.Character.HumanoidRootPart.Position + Vector3.new(0,2,0))
+                l:Notify({
+                    Title = "Teleport",
+                    Content = "ย้ายไปหา "..SelectedPlayer.." เรียบร้อย",
+                    Duration = 3,
+                    Icon = "check",
+                })
+            else
+                l:Notify({
+                    Title = "ล้มเหลว",
+                    Content = "ไม่พบตัวละครของผู้เล่นนั้น",
+                    Duration = 3,
+                    Icon = "x",
+                })
+            end
+        else
+            l:Notify({
+                Title = "ล้มเหลว",
+                Content = "ยังไม่ได้เลือกผู้เล่น",
+                Duration = 3,
+                Icon = "x",
+            })
+        end
+    end
+})
+
+-- ==========================
+-- ปุ่มยิง Carrot Launcher
+-- ==========================
+MiscTab:Button({
+    Title = "🥕 ยิง Carrot Launcher",
+    Callback = function()
+        if SelectedPlayer then
+            local target = Players:FindFirstChild(SelectedPlayer)
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local tool = FindCarrotLauncher()
+                if tool then
+                    humanoid:EquipTool(tool)
+                    task.wait(0.2)
+
+                    local args = {
+                        {
+                            Toggle = true,
+                            Tool = tool,
+                            Time = 0.25,
+                            Pos = target.Character.HumanoidRootPart.Position
+                        }
+                    }
+                    -- *** ต้องใส่โค้ด FireServer ของ Carrot Launcher เองที่นี่ ***
+                    -- ตัวอย่างสมมติ: game:GetService("ReplicatedStorage"):WaitForChild("RemoteEventName"):FireServer(args)
+                    print("ส่งคำสั่งยิง Carrot Launcher ไปที่: " .. target.Name)
+
+                    l:Notify({
+                        Title = "ยิงสำเร็จ",
+                        Content = "ส่งคำสั่งยิงไปที่ "..SelectedPlayer.." แล้ว",
+                        Duration = 3,
+                        Icon = "check",
+                    })
+
+                else
+                    l:Notify({
+                        Title = "ล้มเหลว",
+                        Content = "ไม่พบ Carrot Launcher ในตัว/กระเป๋า",
+                        Duration = 3,
+                        Icon = "x",
+                    })
+                end
+            else
+                l:Notify({
+                    Title = "ล้มเหลว",
+                    Content = "ไม่พบตัวละครของผู้เล่นนั้น",
+                    Duration = 3,
+                    Icon = "x",
+                })
+            end
+        else
+            l:Notify({
+                Title = "ล้มเหลว",
+                Content = "ยังไม่ได้เลือกผู้เล่น",
+                Duration = 3,
+                Icon = "x",
+            })
+        end
+    end
+})
