@@ -444,15 +444,6 @@ end)
 -- =======================================================
 -- ส่วนประกาศตัวแปรพื้นฐาน
 -- =======================================================
--- =======================================================
--- ส่วนประกาศตัวแปรพื้นฐาน
--- =======================================================
--- =======================================================
--- ส่วนประกาศตัวแปรพื้นฐาน
--- =======================================================
--- =======================================================
--- ส่วนประกาศตัวแปรพื้นฐาน
--- =======================================================
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
@@ -460,249 +451,91 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-MiscTab:Section({Title = "😎 Player"})
+-- ==========================
+-- Section Player
+-- ==========================
+MiscTab:Section({ Title = "😎 Player" })
 
--- Anti-AFK
-MiscTab:Toggle({
-    Title = "🛡️ Anti-AFK 20 นาที",
-    Default = config.antiAFK or false,
-    Callback = function(value)
-        config.antiAFK = value
-        saveConfig()
-    end
-})
-
-task.spawn(function()
-    local VirtualUser = game:GetService("VirtualUser")
-    while true do
-        task.wait(60)
-        if config.antiAFK then
-            pcall(function()
-                VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-                VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            end)
-        end
-    end
-end)
-
--- WalkSpeed & JumpPower
-MiscTab:Slider({
-    Title = "🏃‍♂️ ความเร็วเดิน",
-    Value = {Min = 16, Max = 500, Default = humanoid.WalkSpeed},
-    Step = 1,
-    Callback = function(value)
-        config.walkSpeed = value
-        humanoid.WalkSpeed = value
-        saveConfig()
-    end
-})
-
-MiscTab:Slider({
-    Title = "🦘 ความสามารถกระโดด",
-    Value = {Min = 50, Max = 500, Default = humanoid.JumpPower},
-    Step = 1,
-    Callback = function(value)
-        config.jumpPower = value
-        humanoid.JumpPower = value
-        saveConfig()
-    end
-})
-
--- Time of Day Dropdown
-local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
-local selectedSky = config.selectedSky or skyOptions[1]
-
-MiscTab:Dropdown({
-    Title = "🕒 ปรับเวลา / ท้องฟ้า",
-    Default = selectedSky,
-    Values = skyOptions,
-    Callback = function(value)
-        selectedSky = value
-        config.selectedSky = value
-        saveConfig()
-        local lighting = game:GetService("Lighting")
-        if value == "เช้า 🌅" then
-            lighting.TimeOfDay = "06:30:00"
-            lighting.Brightness = 2
-            lighting.OutdoorAmbient = Color3.fromRGB(200,200,255)
-        elseif value == "เย็น 🌇" then
-            lighting.TimeOfDay = "17:30:00"
-            lighting.Brightness = 1.5
-            lighting.OutdoorAmbient = Color3.fromRGB(255,180,120)
-        elseif value == "พระอาทิตย์ตก 🌄" then
-            lighting.TimeOfDay = "18:15:00"
-            lighting.Brightness = 1.2
-            lighting.OutdoorAmbient = Color3.fromRGB(255,150,100)
-        elseif value == "กลางคืน 🌌" then
-            lighting.TimeOfDay = "22:00:00"
-            lighting.Brightness = 0.7
-            lighting.OutdoorAmbient = Color3.fromRGB(50,50,80)
-        end
-    end
-})
-
--- Player Dropdown
-local SelectedPlayer = config.SelectedPlayer or nil
+-- ==========================
+-- Multi-Select Player Dropdown
+-- ==========================
+local SelectedPlayers = config.SelectedPlayers or {} -- เก็บหลายผู้เล่น
 local PlayerDropdown
 
--- ฟังก์ชันดึงรายชื่อผู้เล่นที่มี Character
+-- ฟังก์ชันดึงรายชื่อผู้เล่น
 local function GetPlayersList()
     local list = {}
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= player and p.Character then
+        if p ~= player then
             table.insert(list, p.Name)
         end
     end
     table.sort(list)
     if #list == 0 then
-        list[1] = "ไม่มีผู้เล่น"
+        table.insert(list, "ไม่มีผู้เล่น")
     end
     return list
 end
 
--- ฟังก์ชันสร้าง Dropdown ใหม่
-local function CreatePlayerDropdown()
-    local list = GetPlayersList()
+-- ฟังก์ชัน Refresh Dropdown
+local function RefreshDropdown()
     if PlayerDropdown then
-        PlayerDropdown:Destroy()
-        PlayerDropdown = nil
-    end
-    PlayerDropdown = MiscTab:Dropdown({
-        Title = "👤 เลือกผู้เล่นที่ต้องการ",
-        Default = SelectedPlayer or list[1],
-        Values = list,
-        Callback = function(value)
-            if value == "ไม่มีผู้เล่น" then
-                SelectedPlayer = nil
-            else
-                SelectedPlayer = value
+        local newList = GetPlayersList()
+        PlayerDropdown:Refresh({Values = newList})
+        RunService.Heartbeat:Wait() -- รอให้ GUI อัปเดต
+        -- เลือกค่าที่เคยเลือกไว้ก่อนหน้า
+        local validSelected = {}
+        for _, name in ipairs(SelectedPlayers) do
+            if table.find(newList, name) then
+                table.insert(validSelected, name)
             end
-            config.SelectedPlayer = SelectedPlayer
-            saveConfig()
         end
-    })
+        SelectedPlayers = validSelected
+        PlayerDropdown:Set(SelectedPlayers)
+    end
 end
 
--- เรียกครั้งแรกหลัง GUI โหลด
+-- สร้าง Dropdown แบบ Multi-Select + Searchable
+PlayerDropdown = MiscTab:Dropdown({
+    Title = "👤 เลือกผู้เล่น",
+    Multi = true,
+    SearchBarEnabled = true,
+    Values = {"กำลังโหลด..."}, -- เริ่มต้น
+    Value = SelectedPlayers,
+    Callback = function(values)
+        -- values เป็นตารางของชื่อผู้เล่นที่เลือก
+        SelectedPlayers = values
+        config.SelectedPlayers = SelectedPlayers
+        saveConfig()
+        print("Selected Players: ", table.concat(SelectedPlayers, ", "))
+    end
+})
+
+-- เรียก RefreshDropdown ทันทีหลังสร้าง Dropdown
 task.spawn(function()
     RunService.Heartbeat:Wait()
-    CreatePlayerDropdown()
+    RefreshDropdown()
 end)
 
--- อัปเดตรายชื่ออัตโนมัติเมื่อผู้เล่นเข้า/ออก
+-- ปุ่มรีเฟรชผู้เล่น
+MiscTab:Button({
+    Title = "🔄 รีเฟรชรายชื่อผู้เล่น",
+    Callback = RefreshDropdown
+})
+
+-- รีเฟรชอัตโนมัติเมื่อผู้เล่นเข้า/ออก
 Players.PlayerAdded:Connect(function(plr)
-    task.wait(0.5)
-    CreatePlayerDropdown()
+    if plr ~= player then
+        RefreshDropdown()
+    end
 end)
 
 Players.PlayerRemoving:Connect(function(plr)
-    if SelectedPlayer == plr.Name then
-        SelectedPlayer = nil
-        config.SelectedPlayer = nil
+    local idx = table.find(SelectedPlayers, plr.Name)
+    if idx then
+        table.remove(SelectedPlayers, idx)
+        config.SelectedPlayers = SelectedPlayers
         saveConfig()
     end
-    task.wait(0.5)
-    CreatePlayerDropdown()
+    RefreshDropdown()
 end)
-
--- ฟังก์ชันหา Carrot Launcher
-local function FindCarrotLauncher()
-    for _, tool in ipairs(player.Backpack:GetChildren()) do
-        if tool:IsA("Tool") and string.find(tool.Name, "Carrot Launcher") then
-            return tool
-        end
-    end
-    for _, tool in ipairs(player.Character:GetChildren()) do
-        if tool:IsA("Tool") and string.find(tool.Name, "Carrot Launcher") then
-            return tool
-        end
-    end
-    return nil
-end
-
--- ปุ่มวาปไปหา
-MiscTab:Button({
-    Title = "📍 วาปไปหา",
-    Callback = function()
-        if SelectedPlayer then
-            local target = Players:FindFirstChild(SelectedPlayer)
-            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                hrp.CFrame = CFrame.new(target.Character.HumanoidRootPart.Position + Vector3.new(0,2,0))
-                l:Notify({
-                    Title = "Teleport",
-                    Content = "ย้ายไปหา "..SelectedPlayer.." เรียบร้อย",
-                    Duration = 3,
-                    Icon = "check",
-                })
-            else
-                l:Notify({
-                    Title = "ล้มเหลว",
-                    Content = "ไม่พบตัวละครของผู้เล่นนั้น",
-                    Duration = 3,
-                    Icon = "x",
-                })
-            end
-        else
-            l:Notify({
-                Title = "ล้มเหลว",
-                Content = "ยังไม่ได้เลือกผู้เล่น",
-                Duration = 3,
-                Icon = "x",
-            })
-        end
-    end
-})
-
--- ปุ่มยิง Carrot Launcher
-MiscTab:Button({
-    Title = "🥕 ยิง Carrot Launcher",
-    Callback = function()
-        if SelectedPlayer then
-            local target = Players:FindFirstChild(SelectedPlayer)
-            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                local tool = FindCarrotLauncher()
-                if tool then
-                    humanoid:EquipTool(tool)
-                    task.wait(0.2)
-                    local args = {
-                        {
-                            Toggle = true,
-                            Tool = tool,
-                            Time = 0.25,
-                            Pos = target.Character.HumanoidRootPart.Position
-                        }
-                    }
-                    -- FireServer ของ Carrot Launcher
-                    print("ยิง Carrot Launcher ไปที่ "..target.Name)
-                    l:Notify({
-                        Title = "ยิงสำเร็จ",
-                        Content = "ส่งคำสั่งยิงไปที่ "..SelectedPlayer.." แล้ว",
-                        Duration = 3,
-                        Icon = "check",
-                    })
-                else
-                    l:Notify({
-                        Title = "ล้มเหลว",
-                        Content = "ไม่พบ Carrot Launcher",
-                        Duration = 3,
-                        Icon = "x",
-                    })
-                end
-            else
-                l:Notify({
-                    Title = "ล้มเหลว",
-                    Content = "ไม่พบตัวละครของผู้เล่นนั้น",
-                    Duration = 3,
-                    Icon = "x",
-                })
-            end
-        else
-            l:Notify({
-                Title = "ล้มเหลว",
-                Content = "ยังไม่ได้เลือกผู้เล่น",
-                Duration = 3,
-                Icon = "x",
-            })
-        end
-    end
-})
