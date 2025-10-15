@@ -2,7 +2,7 @@
 -- โหลด WindUI
 -- ==========================
 -- เปลี่ยนชื่อตัวแปรจาก OrionLib เป็น l (ตามโค้ด WindUI มาตรฐาน)
-local l = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/liba'))()
+local l = loadstring(game:HttpGet('https://github.com/Footagesus/WindUI/releases/latest/download/main.lua'))()
 
 -- ==========================
 -- สร้าง Window (ใช้ :CreateWindow ของ WindUI)
@@ -281,6 +281,248 @@ end)
 
 
 -- ==========================
+-- Tab อีเวนท์
+-- ==========================
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- ตัวแปรควบคุม
+local autoPrison = false
+local maxPerName = 5
+local isSelling = false
+local prisonTask = nil
+local sellTask = nil
+local resetTask = nil
+
+-- ==========================
+-- ฟังก์ชันช่วย (ไม่เปลี่ยน)
+-- ==========================
+local function isBrainrotMatch(toolName, brainName)
+    local cleanName = toolName:match("%] (.+)") or toolName
+    return string.find(string.lower(cleanName), string.lower(brainName)) ~= nil
+end
+
+local blacklist = {
+    "WarDenelli Brickatoni",
+    "Dragon Cannelloni"
+}
+
+local function isBlacklisted(toolName)
+    for _, name in ipairs(blacklist) do
+        if isBrainrotMatch(toolName, name) then return true end
+    end
+    return false
+end
+
+-- ==========================
+-- ฟังก์ชันขาย Brainrot (ครั้งเดียว) (ไม่เปลี่ยน)
+-- ==========================
+local function startAutoSell()
+    if sellTask then return end
+    sellTask = task.spawn(function()
+        isSelling = true
+        print("[🛑] หยุด AutoPrison ชั่วคราวระหว่างขาย...")
+
+        local brainrotList = {
+            "Alessio","Orcalero Orcala","Bandito Bobrito","Trippi Troppi",
+            "Bombardiro Crocodilo","Brr Brr Patapim","Ballerina Cappuccina",
+            "Bananita DolPhinita","Burbaloni Lulliloli","Cappuccino Assasino",
+            "Orcalcro Orcala","Svinino Bombondino","Bombini Gussini",
+            "Bandito Bobrito","Bombardiro Crocodilo","Elefanto Cocofanto",
+            "Trippi Troppi","Frigo Camelo","Bambini Crostini",
+            "Gangster Footera","Madung","Crazylone Pizaione"
+        }
+
+        local character = LocalPlayer.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        local Backpack = LocalPlayer:FindFirstChild("Backpack")
+        if not Backpack or not humanoid then isSelling=false return end
+
+        -- นับจำนวนไอเทมใน brainrotList ที่มี kg
+        local countTable = {}
+        for _, item in ipairs(Backpack:GetChildren()) do
+            if item:IsA("Tool") and not isBlacklisted(item.Name) then
+                local hasKG = string.find(item.Name, "%[%d+%.?%d* kg%]")
+                if hasKG then
+                    for _, name in ipairs(brainrotList) do
+                        if isBrainrotMatch(item.Name, name) then
+                            countTable[name] = (countTable[name] or 0) + 1
+                        end
+                    end
+                end
+            end
+        end
+
+        -- ขายไอเทมใน brainrotList เกิน maxPerName
+        for _, name in ipairs(brainrotList) do
+            local remaining = countTable[name] or 0
+            if remaining > maxPerName then
+                local toSell = remaining - maxPerName
+                for _, item in ipairs(Backpack:GetChildren()) do
+                    if toSell <= 0 then break end
+                    if item:IsA("Tool") and not isBlacklisted(item.Name) and isBrainrotMatch(item.Name, name) then
+                        local hasKG = string.find(item.Name, "%[%d+%.?%d* kg%]")
+                        if hasKG then
+                            for i=1,5 do pcall(function() humanoid:EquipTool(item) end) task.wait(0.1) end
+                            if item.Parent == character then
+                                pcall(function()
+                                    ReplicatedStorage.Remotes.ItemSell:FireServer(true)
+                                end)
+                                toSell = toSell - 1
+                                task.wait(0.05)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- ขายไอเทมที่มี kg แต่ไม่อยู่ใน brainrotList และไม่ใช่ blacklist
+        for _, item in ipairs(Backpack:GetChildren()) do
+            if item:IsA("Tool") and not isBlacklisted(item.Name) then
+                local hasKG = string.find(item.Name, "%[%d+%.?%d* kg%]")
+                if hasKG then
+                    local inList = false
+                    for _, name in ipairs(brainrotList) do
+                        if isBrainrotMatch(item.Name, name) then
+                            inList = true
+                            break
+                        end
+                    end
+                    if not inList then
+                        for i=1,5 do pcall(function() humanoid:EquipTool(item) end) task.wait(0.05) end
+                        if item.Parent == character then
+                            pcall(function()
+                                ReplicatedStorage.Remotes.ItemSell:FireServer(true)
+                            end)
+                            task.wait(0.05)
+                        end
+                    end
+                end
+            end
+        end
+
+        print("[✅] ขายเสร็จแล้ว เปิด AutoPrison ต่อ")
+        isSelling = false
+        sellTask = nil
+    end)
+end
+
+-- Toggle Auto Prison Event (ใช้ :Toggle ของ WindUI)
+EventTab:Toggle({
+    Title = "🔁 ออโต้ทำเควส Prison Event [Beta]",
+    Default = false,
+    Callback = function(state)
+        autoPrison = state
+
+        -- ยกเลิก task เดิมก่อน
+        if prisonTask then task.cancel(prisonTask) prisonTask = nil end
+        if resetTask then task.cancel(resetTask) resetTask = nil end
+
+        if autoPrison then
+            local brainrotList = {
+                "Alessio","Orcalero Orcala","Bandito Bobrito","Trippi Troppi",
+                "Bombardiro Crocodilo","Brr Brr Patapim","Ballerina Cappuccina",
+                "Bananita DolPhinita","Burbaloni Lulliloli","Cappuccino Assasino",
+                "Orcalcro Orcala","Svinino Bombondino","Bombini Gussini",
+                "Bandito Bobrito","Bombardiro Crocodilo","Elefanto Cocofanto",
+                "Trippi Troppi","Frigo Camelo","Bambini Crostini",
+                "Gangster Footera","Madung","Crazylone Pizaione"
+            }
+
+            -- 🔁 วนถือ 1 ตัวต่อ Brainrot
+            prisonTask = task.spawn(function()
+                while autoPrison do
+                    if isSelling then
+                        print("[⛔] หยุดชั่วคราวระหว่างขาย...")
+                        repeat task.wait(1) until not isSelling or not autoPrison
+                    end
+
+                    local character = LocalPlayer.Character
+                    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                    local Backpack = LocalPlayer:FindFirstChild("Backpack")
+                    if not Backpack or not humanoid then
+                        task.wait(1)
+                        continue
+                    end
+
+                    -- 🔁 วน Brainrot List ทีละตัว
+                    for _, brainName in ipairs(brainrotList) do
+                        if not autoPrison or isSelling then break end
+
+                        -- หา Tool ตัวแรกในกระเป๋าที่ตรงกับ brainName
+                        local toolToUse = nil
+                        for _, tool in ipairs(Backpack:GetChildren()) do
+                            if tool:IsA("Tool") and not isBlacklisted(tool.Name) and isBrainrotMatch(tool.Name, brainName) then
+                                toolToUse = tool
+                                break
+                            end
+                        end
+
+                        -- ถือและทำ TurnIn ถ้ามี
+                        if toolToUse then
+                            pcall(function()
+                                humanoid:EquipTool(toolToUse)
+                                ReplicatedStorage:WaitForChild("Remotes")
+                                    :WaitForChild("Events"):WaitForChild("Prison")
+                                    :WaitForChild("Interact"):FireServer("TurnIn")
+                            end)
+                            task.wait(0.05)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+})
+
+-- ปุ่ม Reset เควส Prison Event (ใช้ :Button ของ WindUI)
+EventTab:Button({
+    Title = "🔄 รีเซ็ตเควส Prison Event",
+    Callback = function()
+        pcall(function()
+            local args = {"ResetRequest"}
+            ReplicatedStorage:WaitForChild("Remotes")
+                :WaitForChild("Events"):WaitForChild("Prison")
+                :WaitForChild("Interact"):FireServer(unpack(args))
+        end)
+        print("[✅] ส่งคำสั่ง ResetRequest เรียบร้อย")
+    end
+})
+
+
+
+
+-- Slider ปรับ maxPerName (ใช้ :Slider ของ WindUI)
+EventTab:Slider({
+    Title = "จำนวนตัวซ้ำสูงสุดต่อตัว (สูงสุด 10)",
+    Description = "ชิ้น", -- ใช้ Description แทน ValueName
+    Value = {Min = 1, Max = 10, Default = maxPerName}, -- ใช้ Value = {Min=..., Max=..., Default=...}
+    Step = 1, -- ใช้ Step แทน Increment
+    Callback = function(value)
+        maxPerName = value
+    end
+})
+
+-- ปุ่มขาย Brainrot Flexible (ครั้งเดียว) (ใช้ :Button ของ WindUI)
+EventTab:Button({
+    Title = "💰 ขาย Brainrot ที่ไม่เกี่ยวกับEvent [Beta]",
+    Callback = function()
+        if not isSelling then
+            startAutoSell()
+        end
+    end
+})
+
+
+
+
+
+
+
+
+-- ==========================
 -- ประกาศรายการ Gear และ Seed (ไม่เปลี่ยน)
 -- ==========================
 local gearsItems = {"Water Bucket","Frost Grenade","Banana Gun","Frost Blower","Carrot Launcher"}
@@ -441,29 +683,27 @@ end)
 
 
 
--- =======================================================
--- ส่วนประกาศตัวแปรพื้นฐาน
--- =======================================================
--- =======================================================
--- ส่วนที่ 1: การประกาศตัวแปรและการเข้าถึงบริการ
--- =======================================================
+-- ==========================
+-- Misc Tab
+-- ==========================
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local hrp = character:WaitForChild("HumanoidRootPart")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage") 
-local RunService = game:GetService("RunService") -- สำคัญ: สำหรับ Heartbeat:Wait() เพื่อความเสถียรของ Dropdown
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ส่วนนี้มีการจัดการไฟล์ config แยกต่างหาก ซึ่งถูกตัดออกไป
 
 -- ==========================
--- Section Player
+-- Section Player (ใช้ :Section ของ WindUI)
 -- ==========================
 MiscTab:Section({
     Title = "😎 Player"
 })
 
 -- ==========================
--- Anti-AFK
+-- Anti-AFK (ใช้ :Toggle ของ WindUI)
 -- ==========================
 MiscTab:Toggle({
     Title = "🛡️ Anti-AFK 20 นาที",
@@ -474,7 +714,7 @@ MiscTab:Toggle({
     end
 })
 
--- ฟังก์ชัน Anti-AFK
+-- ฟังก์ชัน Anti-AFK (ไม่เปลี่ยน)
 task.spawn(function()
     local VirtualUser = game:GetService("VirtualUser")
     while true do
@@ -489,7 +729,7 @@ task.spawn(function()
 end)
 
 -- ==========================
--- WalkSpeed & JumpPower
+-- WalkSpeed & JumpPower (ใช้ :Slider ของ WindUI)
 -- ==========================
 MiscTab:Slider({
     Title = "🏃‍♂️ ความเร็วเดิน",
@@ -514,7 +754,7 @@ MiscTab:Slider({
 })
 
 -- ==========================
--- Time of Day Dropdown
+-- Time of Day Dropdown (ใช้ :Dropdown ของ WindUI)
 -- ==========================
 local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
 local selectedSky = config.selectedSky or skyOptions[1]
@@ -522,7 +762,7 @@ local selectedSky = config.selectedSky or skyOptions[1]
 MiscTab:Dropdown({
     Title = "🕒 ปรับเวลา / ท้องฟ้า",
     Default = selectedSky,
-    Values = skyOptions,
+    Values = skyOptions, -- ใช้ Values แทน Options
     Callback = function(value)
         selectedSky = value
         config.selectedSky = value
@@ -548,15 +788,12 @@ MiscTab:Dropdown({
     end
 })
 
-
--- =======================================================
--- ส่วนที่ 2: Player Dropdown, Refresh และ Teleport/Carrot
--- (ส่วนที่ได้รับการแก้ไขบัค Dropdown หายหลังรีเฟรช)
--- =======================================================
+-- ==========================
+-- Player Dropdown & Functions
+-- ==========================
 local SelectedPlayer = config.SelectedPlayer or nil
-local PlayerDropdown -- ตัวแปร Dropdown
+local PlayerDropdown
 
--- ฟังก์ชันดึงรายชื่อผู้เล่นคนอื่น
 local function GetPlayersList()
     local list = {}
     for _, p in ipairs(Players:GetPlayers()) do
@@ -564,56 +801,17 @@ local function GetPlayersList()
             table.insert(list, p.Name)
         end
     end
-    table.sort(list) 
-
     if #list == 0 then
-        list[1] = "ไม่มีผู้เล่น" -- ใช้ list[1] แทน table.insert เมื่อมีสมาชิกเดียว
+        table.insert(list, "ไม่มีผู้เล่น")
     end
     return list
 end
 
--- ฟังก์ชันอัปเดต Dropdown (ใช้ Heartbeat เพื่อความเสถียร)
-local function RefreshDropdown()
-    if PlayerDropdown then
-        local newList = GetPlayersList()
-        local playersFound = #newList - (newList[1] == "ไม่มีผู้เล่น" and 1 or 0)
-        local valueToSelect = newList[1] or "ไม่มีผู้เล่น" -- ค่าเริ่มต้นที่ควรเลือก
-
-        -- 1. อัปเดตตัวเลือกใหม่: เรียกใช้ :Refresh
-        PlayerDropdown:Refresh({Values = newList}) 
-        
-        -- !!! การแก้ไขบัค: รอ 1 เฟรม ให้ WindUI มีเวลาสร้าง Element ใหม่ !!!
-        RunService.Heartbeat:Wait() 
-        
-        -- 2. กำหนดค่าที่เลือก
-        if SelectedPlayer and table.find(newList, SelectedPlayer) then
-            valueToSelect = SelectedPlayer
-        else
-            -- เคลียร์ค่าที่บันทึกไว้ใน config ถ้าผู้เล่นที่เลือกไม่อยู่แล้ว
-            SelectedPlayer = nil
-            config.SelectedPlayer = nil
-            saveConfig()
-        end
-
-        -- ใช้ PlayerDropdown:Set เพื่อตั้งค่าที่เลือก
-        PlayerDropdown:Set(valueToSelect)
-        
-        -- 3. แจ้งเตือนเมื่อรีเฟรชสำเร็จ
-        l:Notify({
-            Title = "อัปเดตรายชื่อแล้ว",
-            Content = "พบผู้เล่น: " .. playersFound .. " คน",
-            Duration = 2,
-            Icon = "rotate-cw",
-        })
-    end
-end
-
--- สร้าง Dropdown เลือกผู้เล่น
+-- สร้าง Dropdown เลือกผู้เล่น (ใช้ :Dropdown ของ WindUI)
 PlayerDropdown = MiscTab:Dropdown({
     Title = "👤 เลือกผู้เล่นที่ต้องการ",
-    -- ตั้ง Default เป็นค่า Placeholder เพื่อให้ RefreshDropdown จัดการ Set ค่าจริงหลังโหลด
-    Default = SelectedPlayer or "กำลังโหลด...", 
-    Values = GetPlayersList(),
+    Default = SelectedPlayer or (GetPlayersList()[1] or "ไม่มีผู้เล่น"),
+    Values = GetPlayersList(), -- ใช้ Values แทน Options
     Callback = function(value)
         if value == "ไม่มีผู้เล่น" then
             SelectedPlayer = nil
@@ -625,22 +823,25 @@ PlayerDropdown = MiscTab:Dropdown({
     end
 })
 
--- !!! บังคับเรียก Refresh ทันทีหลังสร้าง Dropdown เพื่อให้ Dropdown โหลดค่าที่ถูกต้อง !!!
-task.spawn(function()
-    -- รอนิดนึงให้ GUI Library จัดการสร้าง Element ให้เสร็จ
-    RunService.Heartbeat:Wait() 
-    RefreshDropdown()
-end)
+-- ฟังก์ชันอัปเดตรายชื่อผู้เล่นอัตโนมัติ (ใช้เมธอดของ WindUI:Refresh และ :Set)
+local function RefreshDropdown()
+    if PlayerDropdown then
+        local newList = GetPlayersList()
+        PlayerDropdown:Refresh({Values = newList}) -- WindUI :Refresh ต้องการตาราง {Values = ...}
+        
+        -- ถ้า SelectedPlayer ยังอยู่ในเกม ให้เลือกค่าเดิม
+        if SelectedPlayer and table.find(newList, SelectedPlayer) then
+            PlayerDropdown:Set(SelectedPlayer)
+        else
+            SelectedPlayer = nil
+            config.SelectedPlayer = nil
+            saveConfig()
+            PlayerDropdown:Set(newList[1] or "ไม่มีผู้เล่น")
+        end
+    end
+end
 
--- ==========================
--- ปุ่มรีเฟรชผู้เล่น
--- ==========================
-MiscTab:Button({
-    Title = "🔄 รีเฟรชรายชื่อผู้เล่น",
-    Callback = RefreshDropdown
-})
-
--- อัปเดตรายชื่ออัตโนมัติเมื่อผู้เล่นเข้า/ออก
+-- อัปเดตรายชื่ออัตโนมัติเมื่อผู้เล่นเข้า/ออก (ไม่เปลี่ยน)
 Players.PlayerAdded:Connect(function(plr)
     if plr ~= player then
         RefreshDropdown()
@@ -656,8 +857,9 @@ Players.PlayerRemoving:Connect(function(plr)
     RefreshDropdown()
 end)
 
+
 -- ==========================
--- ฟังก์ชันหา Carrot Launcher
+-- ฟังก์ชันหา Carrot Launcher (ไม่เปลี่ยน)
 -- ==========================
 local function FindCarrotLauncher()
     for _, tool in ipairs(player.Backpack:GetChildren()) do
@@ -674,7 +876,7 @@ local function FindCarrotLauncher()
 end
 
 -- ==========================
--- ปุ่มวาปไปหา
+-- ปุ่มวาปไปหา (ใช้ :Button ของ WindUI)
 -- ==========================
 MiscTab:Button({
     Title = "📍 วาปไปหา",
@@ -709,7 +911,7 @@ MiscTab:Button({
 })
 
 -- ==========================
--- ปุ่มยิง Carrot Launcher
+-- ปุ่มยิง Carrot Launcher (ใช้ :Button ของ WindUI)
 -- ==========================
 MiscTab:Button({
     Title = "🥕 ยิง Carrot Launcher",
@@ -730,16 +932,9 @@ MiscTab:Button({
                             Pos = target.Character.HumanoidRootPart.Position
                         }
                     }
-                    -- *** ต้องใส่โค้ด FireServer ของ Carrot Launcher เองที่นี่ ***
-                    -- ตัวอย่างสมมติ: game:GetService("ReplicatedStorage"):WaitForChild("RemoteEventName"):FireServer(args)
+                    -- โค้ด FireServer ของ Carrot Launcher ถูกตัดออกไป (คาดว่าเดิมคือ ReplicatedStorage...)
+                    -- เนื่องจากโค้ดเดิมถูกตัดจบ จึงไม่สามารถแก้ไขส่วน FireServer ให้สมบูรณ์ได้
                     print("ส่งคำสั่งยิง Carrot Launcher ไปที่: " .. target.Name)
-
-                    l:Notify({
-                        Title = "ยิงสำเร็จ",
-                        Content = "ส่งคำสั่งยิงไปที่ "..SelectedPlayer.." แล้ว",
-                        Duration = 3,
-                        Icon = "check",
-                    })
 
                 else
                     l:Notify({
