@@ -2,7 +2,7 @@
 -- โหลด WindUI
 -- ==========================
 -- เปลี่ยนชื่อตัวแปรจาก OrionLib เป็น l (ตามโค้ด WindUI มาตรฐาน)
-local l = loadstring(game:HttpGet('https://github.com/Footagesus/WindUI/releases/latest/download/main.lua'))()
+local l = loadstring(game:HttpGet('https://raw.githubusercontent.com/Chxtoqfee12/Plant-brainrot/refs/heads/main/liba'))()
 
 -- ==========================
 -- สร้าง Window (ใช้ :CreateWindow ของ WindUI)
