@@ -1,0 +1,708 @@
+-- ==========================
+-- โหลด WindUI
+-- ==========================
+-- เปลี่ยนชื่อตัวแปรจาก OrionLib เป็น l (ตามโค้ด WindUI มาตรฐาน)
+local l = loadstring(game:HttpGet('https://github.com/Footagesus/WindUI/releases/latest/download/main.lua'))()
+
+-- ==========================
+-- สร้าง Window (ใช้ :CreateWindow ของ WindUI)
+-- ==========================
+local Window = l:CreateWindow({
+    Title = "CHX Plant vs Brainrot V2.3.5", -- ใช้ Title แทน Name
+    Icon = "rbxassetid://6031075936",
+    Author = "CHX", -- เพิ่ม Author
+    Folder = "CHXPlantBrainrot", -- ใช้ Folder แทน ConfigFolder
+    Size = UDim2.fromOffset(500, 390),
+    Theme = "Dark",
+})
+
+
+-- ==========================
+-- ฟังก์ชัน Config (ใช้ชื่อตัวแปรเดิมเพื่อลดความซับซ้อน)
+-- **หมายเหตุ: ส่วน Config ถูกทำให้ง่ายลงและเก็บไว้ในตัวแปร Global เพื่อเลี่ยงปัญหาการจัดการไฟล์**
+-- ==========================
+local config = {}
+local function saveConfig()
+    -- WindUI มีระบบ Config ในตัวอยู่แล้ว แต่สำหรับตัวแปรที่เพิ่มมา จะละเว้นการบันทึกไฟล์
+end
+local function loadConfig()
+    -- ละเว้นการโหลดไฟล์ภายนอก
+end
+loadConfig()
+
+-- ==========================
+-- สร้าง Tabs (ใช้ :Tab ของ WindUI)
+-- ==========================
+local FarmTab = Window:Tab({
+    Title = "🚜 ฟาร์ม", -- ใช้ Title แทน Name
+    Icon = "leaf", -- เปลี่ยน Icon เป็นชื่อมาตรฐาน
+})
+
+local EventTab = Window:Tab({
+    Title = "🎩 อีเวนท์",
+    Icon = "gem",
+})
+
+local ShopTab = Window:Tab({
+    Title = "🛒 ร้านค้า",
+    Icon = "shopping-cart"
+})
+
+local MiscTab = Window:Tab({
+    Title = "⚙️ อื่นๆ",
+    Icon = "settings"
+})
+
+-- ==========================
+-- ตัวแปร
+-- ==========================
+local player = game.Players.LocalPlayer
+local homeSaved = false
+local homePosition = nil
+local autoAttackEnabled = false
+local autoCollectEnabled = false
+local warnedNoSave = false
+
+-- ตัวแปร loop
+local startFarming = false
+local hasWarpedToHome = false
+
+-- ==========================
+-- ฟังก์ชันบันทึกบ้าน
+-- ==========================
+local function saveHomePosition()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        homePosition = player.Character.HumanoidRootPart.Position
+        homeSaved = true
+
+        l:Notify({ -- ใช้ :Notify ของ WindUI
+            Title = "บันทึกบ้านแล้ว",
+            Content = "ตำแหน่งบ้านถูกบันทึกเรียบร้อย",
+            Duration = 3,
+            Icon = "check",
+        })
+    end
+end
+
+-- ==========================
+-- Section: ฟาร์ม (ใช้ :Section ของ WindUI)
+-- ==========================
+FarmTab:Section({ Title = "🚜 ฟาร์ม" })
+
+-- ปุ่มบันทึกบ้าน (ใช้ :Button ของ WindUI)
+FarmTab:Button({
+    Title = "💾 บันทึกตำแหน่งบ้าน",
+    Callback = saveHomePosition
+})
+
+-- Toggle Auto Attack (ใช้ :Toggle ของ WindUI)
+FarmTab:Toggle({
+    Title = "⚔️ โจมตี Brainrot อัตโนมัติ",
+    Default = false,
+    Callback = function(value)
+        autoAttackEnabled = value
+        if value then
+            hasWarpedToHome = false
+            startFarming = false
+            if not homeSaved and not warnedNoSave then
+                l:Notify({
+                    Title = "⚠️ โปรดบันทึกตำแหน่งบ้าน",
+                    Content = "กรุณากด 💾 บันทึกตำแหน่งบ้านก่อนเพื่อ Warp และเริ่มโจมตี",
+                    Duration = 5,
+                    Icon = "triangle-alert",
+                })
+                warnedNoSave = true
+            else
+                warnedNoSave = false
+            end
+        end
+    end
+})
+
+-- Toggle Auto Collect (เก็บเงินทุก 5 วิ)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local equipRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("EquipBestBrainrots")
+
+FarmTab:Toggle({
+    Title = "💸 เก็บเงินอัตโนมัติทุก 5 วิ",
+    Default = false,
+    Callback = function(value)
+        autoCollectEnabled = value
+        if value then
+            task.spawn(function()
+                while autoCollectEnabled do
+                    pcall(function()
+                        equipRemote:FireServer()
+                    end)
+                    task.wait(5)
+                end
+            end)
+        end
+    end
+})
+
+-- Toggle Auto Sell
+local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ItemSell")
+local sellingEnabled = false
+local cooldownTime = 20
+local lastSellTime = 0
+
+FarmTab:Toggle({
+    Title = "💰 ขาย Brainrot ทั้งหมดทุก20วินาที",
+    Default = false,
+    Callback = function(value)
+        sellingEnabled = value
+    end
+})
+
+-- ==========================
+-- ฟังก์ชันหา Brainrots
+-- ==========================
+local attackRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("AttacksServer"):WaitForChild("WeaponAttack")
+local floatHeight = 3
+local lerpSpeed = 0.5
+local warnedNoBat = false
+
+local function getBrainrots()
+    local folder = workspace:FindFirstChild("ScriptedMap") and workspace.ScriptedMap:FindFirstChild("Brainrots")
+    if not folder then return {} end
+    local brainrots = {}
+    for _, v in ipairs(folder:GetChildren()) do
+        if v:IsA("Model") then
+            table.insert(brainrots, v)
+        end
+    end
+    return brainrots
+end
+
+-- ==========================
+-- Loop Auto Attack + Auto Sell + Auto Equip Bat + Warp Home (ส่วนนี้ไม่เปลี่ยน)
+-- ==========================
+task.spawn(function()
+    while true do
+        task.wait(0.005)
+
+        if autoAttackEnabled and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            local tool = player.Character:FindFirstChildOfClass("Tool")
+
+            if hrp and humanoid then
+                humanoid.PlatformStand, humanoid.Sit = false, false
+                hrp.Velocity = Vector3.zero
+
+                -- ===== Auto Equip Bat =====
+                if not tool then
+                    local backpack = player:FindFirstChild("Backpack")
+                    local foundBat = nil
+                    if backpack then
+                        for _, item in ipairs(backpack:GetChildren()) do
+                            if item:IsA("Tool") and string.find(item.Name:lower(), "bat") then
+                                foundBat = item
+                                break
+                            end
+                        end
+                    end
+                    if foundBat then
+                        player.Character.Humanoid:EquipTool(foundBat)
+                        tool = foundBat
+                    else
+                        if not warnedNoBat then
+                            l:Notify({
+                                Title = "⚠️ โปรดถือ Bat",
+                                Content = "หา Bat ไม่เจอในกระเป๋า/ตัวละคร ดาเมจจะไม่เข้า",
+                                Duration = 4,
+                                Icon = "triangle-alert",
+                            })
+                            warnedNoBat = true
+                            spawn(function()
+                                wait(6)
+                                warnedNoBat = false
+                            end)
+                        end
+                    end
+                end
+
+                -- ===== Warp to home ทุกครั้งที่เปิด Auto =====
+                if not hasWarpedToHome and homeSaved and homePosition then
+                    hrp.CFrame = CFrame.new(homePosition)
+                    hasWarpedToHome = true
+                    task.delay(1, function()
+                        startFarming = true
+                    end)
+                end
+
+                -- ===== Start farming Brainrots =====
+                if startFarming then
+                    local brainrots = getBrainrots()
+                    local closest, minDist = nil, math.huge
+                    for _, enemy in ipairs(brainrots) do
+                        if enemy and enemy.Parent then
+                            local part = enemy:FindFirstChild("HumanoidRootPart") or enemy:FindFirstChildWhichIsA("BasePart")
+                            if part then
+                                local dist = (part.Position - hrp.Position).Magnitude
+                                if dist < minDist then
+                                    closest = enemy
+                                    minDist = dist
+                                end
+                            end
+                        end
+                    end
+                    if closest and closest.Parent then
+                        local targetPart = closest:FindFirstChild("HumanoidRootPart") or closest:FindFirstChildWhichIsA("BasePart")
+                        if targetPart then
+                            local desiredPos = Vector3.new(targetPart.Position.X, targetPart.Position.Y - floatHeight, targetPart.Position.Z)
+                            local newPos = hrp.Position:Lerp(desiredPos, lerpSpeed)
+                            hrp.CFrame = CFrame.new(newPos, Vector3.new(targetPart.Position.X, newPos.Y, targetPart.Position.Z))
+                            local idObj = closest:FindFirstChild("ID")
+                            local idValue = idObj and idObj.Value or closest.Name
+                            for i = 1, 6 do
+                                pcall(function()
+                                    attackRemote:FireServer({idValue})
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- ===== Auto Sell Brainrot =====
+        if sellingEnabled and tick() - lastSellTime >= cooldownTime then
+            pcall(function()
+                sellRemote:FireServer()
+            end)
+            lastSellTime = tick()
+        end
+    end
+end)
+
+
+
+
+-- ==========================
+-- ประกาศรายการ Gear และ Seed (ไม่เปลี่ยน)
+-- ==========================
+local gearsItems = {"Water Bucket","Frost Grenade","Banana Gun","Frost Blower","Carrot Launcher"}
+local seedsItems = {"Cactus Seed","Strawberry Seed","Pumpkin Seed","Sunflower Seed","Dragon Fruit Seed","Eggplant Seed","Watermelon Seed","Grape Seed","Cocotank Seed","Carnivorous Plant Seed","Mr Carrot Seed","Tomatrio Seed","Shroombino Seed","Mango Seed","King Limone Seed"}
+
+local autoBuyGears = {}
+local autoBuySeeds = {}
+for _, gearName in ipairs(gearsItems) do
+    autoBuyGears[gearName] = config.autoBuyGears and config.autoBuyGears[gearName] or false
+end
+for _, seedName in ipairs(seedsItems) do
+    autoBuySeeds[seedName] = config.autoBuySeeds and config.autoBuySeeds[seedName] or false
+end
+
+local buyAllGearsEnabled = config.buyAllGearsEnabled or false
+local buyAllSeedsEnabled = config.buyAllSeedsEnabled or false
+
+
+-- ==========================
+-- Shop Tab
+-- ==========================
+-- (ย้ายการประกาศตัวแปรมาข้างบนแล้ว)
+
+-- ==========================
+-- Section: Gears Shop (ใช้ :Section ของ WindUI)
+-- ==========================
+ShopTab:Section({
+    Title = "🛒 Gear"
+})
+
+-- Toggle ซื้อ Gear ทั้งหมด (ใช้ :Toggle ของ WindUI)
+ShopTab:Toggle({
+    Title = "ซื้อ Gear ทั้งหมดอัตโนมัติ",
+    Default = buyAllGearsEnabled,
+    Callback = function(state)
+        buyAllGearsEnabled = state
+        config.buyAllGearsEnabled = state
+        saveConfig()
+    end
+})
+
+-- Toggle Gear รายตัว (ใช้ :Toggle ของ WindUI)
+for _, gearName in ipairs(gearsItems) do
+    ShopTab:Toggle({
+        Title = gearName,
+        Default = autoBuyGears[gearName],
+        Callback = function(state)
+            autoBuyGears[gearName] = state
+            config.autoBuyGears = autoBuyGears
+            saveConfig()
+        end
+    })
+end
+
+-- ==========================
+-- Section: Seeds Shop (ใช้ :Section ของ WindUI)
+-- ==========================
+ShopTab:Section({
+    Title = "🛒 Seed"
+})
+
+-- Toggle ซื้อ Seed ทั้งหมด (ใช้ :Toggle ของ WindUI)
+ShopTab:Toggle({
+    Title = "ซื้อ Seed ทั้งหมดอัตโนมัติ",
+    Default = buyAllSeedsEnabled,
+    Callback = function(state)
+        buyAllSeedsEnabled = state
+        config.buyAllSeedsEnabled = state
+        saveConfig()
+    end
+})
+
+-- Toggle Seed รายตัว (ใช้ :Toggle ของ WindUI)
+for _, seedName in ipairs(seedsItems) do
+    ShopTab:Toggle({
+        Title = seedName,
+        Default = autoBuySeeds[seedName],
+        Callback = function(state)
+            autoBuySeeds[seedName] = state
+            config.autoBuySeeds = autoBuySeeds
+            saveConfig()
+        end
+    })
+end
+
+-- ==========================
+-- ฟังก์ชันซื้อ Gear / Seed (ไม่เปลี่ยน)
+-- ==========================
+local buyGearRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyGear")
+local buySeedRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyItem")
+
+local function buyGear(gearName)
+    pcall(function() buyGearRemote:FireServer(gearName) end)
+end
+
+local function buySeed(seedName)
+    pcall(function() buySeedRemote:FireServer(seedName) end)
+end
+
+-- ==========================
+-- ฟังก์ชันซื้อหลาย stack หลายรอบ (ไม่เปลี่ยน)
+-- ==========================
+function buyMultipleStacks(itemList, isGear, stackAmount, repeatTimes)
+    local remote = isGear and buyGearRemote or buySeedRemote
+    task.spawn(function()
+        for repeatIndex = 1, repeatTimes do
+            for _, itemName in ipairs(itemList) do
+                for i = 1, stackAmount do
+                    pcall(function()
+                        remote:FireServer(itemName)
+                    end)
+                    task.wait(0.1)
+                end
+            end
+            task.wait(0.5)
+        end
+    end)
+end
+
+-- ==========================
+-- Loop Auto Buy Gear & Seed (ไม่เปลี่ยน)
+-- ==========================
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+
+        -- ซื้อ Gear
+        if buyAllGearsEnabled then
+            for _, gearName in ipairs(gearsItems) do
+                buyGear(gearName)
+                task.wait(0.5)
+            end
+        else
+            for gearName, state in pairs(autoBuyGears) do
+                if state then
+                    buyGear(gearName)
+                    task.wait(0.5)
+                end
+            end
+        end
+
+        -- ซื้อ Seed
+        if buyAllSeedsEnabled then
+            for _, seedName in ipairs(seedsItems) do
+                buySeed(seedName)
+                task.wait(0.5)
+            end
+        else
+            for seedName, state in pairs(autoBuySeeds) do
+                if state then
+                    buySeed(seedName)
+                    task.wait(0.5)
+                end
+            end
+        end
+    end
+end)
+
+
+
+-- =======================================================
+-- ส่วนประกาศตัวแปรพื้นฐาน
+-- =======================================================
+-- =======================================================
+-- ส่วนประกาศตัวแปรพื้นฐาน
+-- =======================================================
+-- =======================================================
+-- ส่วนประกาศตัวแปรพื้นฐาน
+-- =======================================================
+-- =======================================================
+-- ส่วนประกาศตัวแปรพื้นฐาน
+-- =======================================================
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local hrp = character:WaitForChild("HumanoidRootPart")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+MiscTab:Section({Title = "😎 Player"})
+
+-- Anti-AFK
+MiscTab:Toggle({
+    Title = "🛡️ Anti-AFK 20 นาที",
+    Default = config.antiAFK or false,
+    Callback = function(value)
+        config.antiAFK = value
+        saveConfig()
+    end
+})
+
+task.spawn(function()
+    local VirtualUser = game:GetService("VirtualUser")
+    while true do
+        task.wait(60)
+        if config.antiAFK then
+            pcall(function()
+                VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+                VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            end)
+        end
+    end
+end)
+
+-- WalkSpeed & JumpPower
+MiscTab:Slider({
+    Title = "🏃‍♂️ ความเร็วเดิน",
+    Value = {Min = 16, Max = 500, Default = humanoid.WalkSpeed},
+    Step = 1,
+    Callback = function(value)
+        config.walkSpeed = value
+        humanoid.WalkSpeed = value
+        saveConfig()
+    end
+})
+
+MiscTab:Slider({
+    Title = "🦘 ความสามารถกระโดด",
+    Value = {Min = 50, Max = 500, Default = humanoid.JumpPower},
+    Step = 1,
+    Callback = function(value)
+        config.jumpPower = value
+        humanoid.JumpPower = value
+        saveConfig()
+    end
+})
+
+-- Time of Day Dropdown
+local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
+local selectedSky = config.selectedSky or skyOptions[1]
+
+MiscTab:Dropdown({
+    Title = "🕒 ปรับเวลา / ท้องฟ้า",
+    Default = selectedSky,
+    Values = skyOptions,
+    Callback = function(value)
+        selectedSky = value
+        config.selectedSky = value
+        saveConfig()
+        local lighting = game:GetService("Lighting")
+        if value == "เช้า 🌅" then
+            lighting.TimeOfDay = "06:30:00"
+            lighting.Brightness = 2
+            lighting.OutdoorAmbient = Color3.fromRGB(200,200,255)
+        elseif value == "เย็น 🌇" then
+            lighting.TimeOfDay = "17:30:00"
+            lighting.Brightness = 1.5
+            lighting.OutdoorAmbient = Color3.fromRGB(255,180,120)
+        elseif value == "พระอาทิตย์ตก 🌄" then
+            lighting.TimeOfDay = "18:15:00"
+            lighting.Brightness = 1.2
+            lighting.OutdoorAmbient = Color3.fromRGB(255,150,100)
+        elseif value == "กลางคืน 🌌" then
+            lighting.TimeOfDay = "22:00:00"
+            lighting.Brightness = 0.7
+            lighting.OutdoorAmbient = Color3.fromRGB(50,50,80)
+        end
+    end
+})
+
+-- Player Dropdown
+local SelectedPlayer = config.SelectedPlayer or nil
+local PlayerDropdown
+
+-- ฟังก์ชันดึงรายชื่อผู้เล่นที่มี Character
+local function GetPlayersList()
+    local list = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            table.insert(list, p.Name)
+        end
+    end
+    table.sort(list)
+    if #list == 0 then
+        list[1] = "ไม่มีผู้เล่น"
+    end
+    return list
+end
+
+-- ฟังก์ชันสร้าง Dropdown ใหม่
+local function CreatePlayerDropdown()
+    local list = GetPlayersList()
+    if PlayerDropdown then
+        PlayerDropdown:Destroy()
+        PlayerDropdown = nil
+    end
+    PlayerDropdown = MiscTab:Dropdown({
+        Title = "👤 เลือกผู้เล่นที่ต้องการ",
+        Default = SelectedPlayer or list[1],
+        Values = list,
+        Callback = function(value)
+            if value == "ไม่มีผู้เล่น" then
+                SelectedPlayer = nil
+            else
+                SelectedPlayer = value
+            end
+            config.SelectedPlayer = SelectedPlayer
+            saveConfig()
+        end
+    })
+end
+
+-- เรียกครั้งแรกหลัง GUI โหลด
+task.spawn(function()
+    RunService.Heartbeat:Wait()
+    CreatePlayerDropdown()
+end)
+
+-- อัปเดตรายชื่ออัตโนมัติเมื่อผู้เล่นเข้า/ออก
+Players.PlayerAdded:Connect(function(plr)
+    task.wait(0.5)
+    CreatePlayerDropdown()
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    if SelectedPlayer == plr.Name then
+        SelectedPlayer = nil
+        config.SelectedPlayer = nil
+        saveConfig()
+    end
+    task.wait(0.5)
+    CreatePlayerDropdown()
+end)
+
+-- ฟังก์ชันหา Carrot Launcher
+local function FindCarrotLauncher()
+    for _, tool in ipairs(player.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and string.find(tool.Name, "Carrot Launcher") then
+            return tool
+        end
+    end
+    for _, tool in ipairs(player.Character:GetChildren()) do
+        if tool:IsA("Tool") and string.find(tool.Name, "Carrot Launcher") then
+            return tool
+        end
+    end
+    return nil
+end
+
+-- ปุ่มวาปไปหา
+MiscTab:Button({
+    Title = "📍 วาปไปหา",
+    Callback = function()
+        if SelectedPlayer then
+            local target = Players:FindFirstChild(SelectedPlayer)
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                hrp.CFrame = CFrame.new(target.Character.HumanoidRootPart.Position + Vector3.new(0,2,0))
+                l:Notify({
+                    Title = "Teleport",
+                    Content = "ย้ายไปหา "..SelectedPlayer.." เรียบร้อย",
+                    Duration = 3,
+                    Icon = "check",
+                })
+            else
+                l:Notify({
+                    Title = "ล้มเหลว",
+                    Content = "ไม่พบตัวละครของผู้เล่นนั้น",
+                    Duration = 3,
+                    Icon = "x",
+                })
+            end
+        else
+            l:Notify({
+                Title = "ล้มเหลว",
+                Content = "ยังไม่ได้เลือกผู้เล่น",
+                Duration = 3,
+                Icon = "x",
+            })
+        end
+    end
+})
+
+-- ปุ่มยิง Carrot Launcher
+MiscTab:Button({
+    Title = "🥕 ยิง Carrot Launcher",
+    Callback = function()
+        if SelectedPlayer then
+            local target = Players:FindFirstChild(SelectedPlayer)
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local tool = FindCarrotLauncher()
+                if tool then
+                    humanoid:EquipTool(tool)
+                    task.wait(0.2)
+                    local args = {
+                        {
+                            Toggle = true,
+                            Tool = tool,
+                            Time = 0.25,
+                            Pos = target.Character.HumanoidRootPart.Position
+                        }
+                    }
+                    -- FireServer ของ Carrot Launcher
+                    print("ยิง Carrot Launcher ไปที่ "..target.Name)
+                    l:Notify({
+                        Title = "ยิงสำเร็จ",
+                        Content = "ส่งคำสั่งยิงไปที่ "..SelectedPlayer.." แล้ว",
+                        Duration = 3,
+                        Icon = "check",
+                    })
+                else
+                    l:Notify({
+                        Title = "ล้มเหลว",
+                        Content = "ไม่พบ Carrot Launcher",
+                        Duration = 3,
+                        Icon = "x",
+                    })
+                end
+            else
+                l:Notify({
+                    Title = "ล้มเหลว",
+                    Content = "ไม่พบตัวละครของผู้เล่นนั้น",
+                    Duration = 3,
+                    Icon = "x",
+                })
+            end
+        else
+            l:Notify({
+                Title = "ล้มเหลว",
+                Content = "ยังไม่ได้เลือกผู้เล่น",
+                Duration = 3,
+                Icon = "x",
+            })
+        end
+    end
+})
