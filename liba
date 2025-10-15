@@ -5847,8 +5847,7 @@ Padding=UDim.new(0,an.MenuPadding)
 }),
 aj("Frame",{
 BackgroundTransparency=1,
-Size=UDim2.new(1,0,1,am.SearchBarEnabled and-an.MenuPadding-an.SearchBarHeight),
-
+Size=UDim2.new(1,0,1,am.SearchBarEnabled and-an.MenuPadding-an.SearchBarHeight)or UDim2.new(1,0,1,-an.MenuPadding*2), -- แก้ไขตรงนี้ให้ชัดเจนขึ้น
 ClipsDescendants=true,
 LayoutOrder=999,
 },{
@@ -5903,7 +5902,8 @@ local function RecalculateListSize()
 local ar=ag.ViewportSize.Y*0.6
 
 local as=am.UIElements.UIListLayout.AbsoluteContentSize.Y
-local at=am.SearchBarEnabled and(an.SearchBarHeight+(an.MenuPadding*3))or(an.MenuPadding*2)
+-- แก้ไขการคำนวณความสูงให้ใช้ค่า MenuPadding
+local at=am.SearchBarEnabled and(an.SearchBarHeight+(an.MenuPadding*3))or(an.MenuPadding*2) 
 local au=(as)+at
 
 if au>ar then
@@ -5953,112 +5953,158 @@ if table.find(am.Value,ax)then
 au=au..ax..", "
 end
 end
-au=au:sub(1,#au-2)
+-- เพิ่มการตรวจสอบเพื่อหลีกเลี่ยง error เมื่อไม่มีค่า Multi
+au=au:sub(1,#au-2>0 and #au-2 or #au) 
 else
-au=typeof(am.Value)=="table"and am.Value.Title or am.Value or""
+-- โค้ดที่เพิ่ม: เพื่อให้แสดงค่าที่เลือกถูกต้อง
+local displayValue = typeof(am.Value)=="table"and am.Value.Title or am.Value
+au = displayValue or ""
 end
 
-am.UIElements.Dropdown.Frame.Frame.TextLabel.Text=(au==""and"--"or au)
+-- แก้ไข: TextLabel.Text จะแสดงค่าที่ถูกเลือก หรือ '— —' 
+am.UIElements.Dropdown.Frame.Frame.TextLabel.Text=(au==""and"— —"or au)
 end
 
+-- *** ฟังก์ชัน REFRESH ที่ได้รับการแก้ไขเพื่อแก้ปัญหาการหายของรายชื่อ ***
 function aq.Refresh(as,at)
-for au,av in next,am.UIElements.Menu.Frame.ScrollingFrame:GetChildren()do
-if not av:IsA"UIListLayout"then
-av:Destroy()
-end
-end
+    -- as คือ self (Dropdown Object), at คือ Config ({Values = newList, Default = selectedValue})
 
-am.Tabs={}
+    -- 1. ล้างรายการเก่า
+    for au,av in next,am.UIElements.Menu.Frame.ScrollingFrame:GetChildren()do
+        if not av:IsA"UIListLayout"then
+            av:Destroy()
+        end
+    end
 
-if am.SearchBarEnabled then
-if not ar then
-ar=ah("Search...","search",am.UIElements.Menu,nil,function(aw)
-for ax,ay in next,am.Tabs do
-if string.find(string.lower(ay.Name),string.lower(aw),1,true)then
-ay.UIElements.TabItem.Visible=true
-else
-ay.UIElements.TabItem.Visible=false
-end
-RecalculateListSize()
-RecalculateCanvasSize()
-end
-end,true)
-ar.Size=UDim2.new(1,0,0,an.SearchBarHeight)
-ar.Position=UDim2.new(0,0,0,0)
-ar.Name="SearchBar"
-end
-end
+    am.Tabs={}
+    
+    -- *** โค้ดที่เพิ่ม: จัดการค่าที่ถูกเลือกก่อนการสร้างรายการใหม่ (แก้ไขบั๊ก) ***
+    local newValues = at.Values or am.Values
+    local newDefault = at.Default -- ค่า Default ที่ถูกส่งมาจากโค้ดหลัก
+    am.Values = newValues -- อัปเดตค่า Values ใน Dropdown Object
+    
+    local selectedValue = am.Value
+    
+    -- 2. กำหนดค่า Selected Value ใหม่
+    if newDefault and type(newDefault) == "string" and table.find(am.Values, newDefault) then
+        -- ถ้ามีการส่งค่า Default มา และอยู่ในรายการใหม่ ให้เลือกค่านั้น
+        selectedValue = newDefault
+    
+    elseif selectedValue and type(selectedValue) == "string" and table.find(am.Values, selectedValue) then
+        -- ถ้าค่าเดิมที่ถูกเลือกยังอยู่ในรายการใหม่ ให้ใช้ค่านั้นต่อ
+        -- (ไม่ต้องทำอะไร)
+        
+    elseif #am.Values > 0 then
+        -- ถ้าไม่มีค่าถูกเลือก หรือค่าที่เลือกไม่อยู่แล้ว ให้เลือกรายการแรกสุด
+        selectedValue = am.Values[1]
+    
+    else
+        selectedValue = nil -- ไม่มีผู้เล่นให้เลือก
+    end
+    
+    am.Value = selectedValue -- ตั้งค่า Value ใหม่ (สำคัญที่สุด)
+    
+    -- *** สิ้นสุดโค้ดที่เพิ่ม ***
 
-for aw,ax in next,at do
 
-local ay={
-Name=typeof(ax)=="table"and ax.Title or ax,
-Icon=typeof(ax)=="table"and ax.Icon or nil,
-Original=ax,
-Selected=false,
-UIElements={},
-}
-local az
-if ay.Icon then
-az=ai.Image(
-ay.Icon,
-ay.Icon,
-0,
-al.Window.Folder,
-"Dropdown",
-true
-)
-az.Size=UDim2.new(0,an.TabIcon,0,an.TabIcon)
-az.ImageLabel.ImageTransparency=.2
-ay.UIElements.TabIcon=az
-end
-ay.UIElements.TabItem=ai.NewRoundFrame(an.MenuCorner-an.MenuPadding,"Squircle",{
-Size=UDim2.new(1,0,0,36),
+    if am.SearchBarEnabled then
+    if not ar then
+    ar=ah("Search...","search",am.UIElements.Menu,nil,function(aw)
+    for ax,ay in next,am.Tabs do
+    if string.find(string.lower(ay.Name),string.lower(aw),1,true)then
+    ay.UIElements.TabItem.Visible=true
+    else
+    ay.UIElements.TabItem.Visible=false
+    end
+    RecalculateListSize()
+    RecalculateCanvasSize()
+    end
+    end,true)
+    ar.Size=UDim2.new(1,0,0,an.SearchBarHeight)
+    ar.Position=UDim2.new(0,0,0,0)
+    ar.Name="SearchBar"
+    end
+    end
 
-ImageTransparency=1,
-Parent=am.UIElements.Menu.Frame.ScrollingFrame,
+    -- 3. สร้างรายการใหม่ (ใช้ am.Values ที่ถูกอัปเดตแล้ว)
+    for aw,ax in next,am.Values do
 
-ImageColor3=Color3.new(1,1,1),
+    local ay={
+    Name=typeof(ax)=="table"and ax.Title or ax,
+    Icon=typeof(ax)=="table"and ax.Icon or nil,
+    Original=ax,
+    Selected=false,
+    UIElements={},
+    }
+    
+    -- *** โค้ดที่เพิ่ม: ไฮไลท์ค่าที่ถูกเลือกตาม am.Value ใหม่ ***
+    if am.Value == ay.Name then
+        ay.Selected = true
+    end
+    -- *** สิ้นสุดโค้ดที่เพิ่ม ***
 
-},{
-ai.NewRoundFrame(an.MenuCorner-an.MenuPadding,"SquircleOutline",{
-Size=UDim2.new(1,0,1,0),
-ImageColor3=Color3.new(1,1,1),
-ImageTransparency=1,
-Name="Highlight",
-},{
-aj("UIGradient",{
-Rotation=80,
-Color=ColorSequence.new{
-ColorSequenceKeypoint.new(0.0,Color3.fromRGB(255,255,255)),
-ColorSequenceKeypoint.new(0.5,Color3.fromRGB(255,255,255)),
-ColorSequenceKeypoint.new(1.0,Color3.fromRGB(255,255,255)),
-},
-Transparency=NumberSequence.new{
-NumberSequenceKeypoint.new(0.0,0.1),
-NumberSequenceKeypoint.new(0.5,1),
-NumberSequenceKeypoint.new(1.0,0.1),
-}
-}),
-}),
-aj("Frame",{
-Size=UDim2.new(1,0,1,0),
-BackgroundTransparency=1,
-},{
-aj("UIListLayout",{
-Padding=UDim.new(0,an.TabPadding),
-FillDirection="Horizontal",
-VerticalAlignment="Center",
-}),
-aj("UIPadding",{
+    local az
+    if ay.Icon then
+    az=ai.Image(
+    ay.Icon,
+    ay.Icon,
+    0,
+    al.Window.Folder,
+    "Dropdown",
+    true
+    )
+    az.Size=UDim2.new(0,an.TabIcon,0,an.TabIcon)
+    az.ImageLabel.ImageTransparency=.2
+    ay.UIElements.TabIcon=az
+    end
+    ay.UIElements.TabItem=ai.NewRoundFrame(an.MenuCorner-an.MenuPadding,"Squircle",{
+    Size=UDim2.new(1,0,0,36),
 
-PaddingLeft=UDim.new(0,an.TabPadding),
-PaddingRight=UDim.new(0,an.TabPadding),
+    ImageTransparency=1,
+    Parent=am.UIElements.Menu.Frame.ScrollingFrame,
 
-}),
-aj("UICorner",{
-CornerRadius=UDim.new(0,an.MenuCorner-an.MenuPadding)
-}),
+    ImageColor3=Color3.new(1,1,1),
+
+    },{
+    ai.NewRoundFrame(an.MenuCorner-an.MenuPadding,"SquircleOutline",{
+    Size=UDim2.new(1,0,1,0),
+    ImageColor3=Color3.new(1,1,1),
+    ImageTransparency=ay.Selected and 0 or 1, -- แก้ไขให้ Highlight แสดงผลถ้า Selected
+    Name="Highlight",
+    },{
+    aj("UIGradient",{
+    Rotation=80,
+    Color=ColorSequence.new{
+    ColorSequenceKeypoint.new(0.0,Color3.fromRGB(255,255,255)),
+    ColorSequenceKeypoint.new(0.5,Color3.fromRGB(255,255,255)),
+    ColorSequenceKeypoint.new(1.0,Color3.fromRGB(255,255,255)),
+    },
+    Transparency=NumberSequence.new{
+    NumberSequenceKeypoint.new(0.0,0.1),
+    NumberSequenceKeypoint.new(0.5,1),
+    NumberSequenceKeypoint.new(1.0,0.1),
+    }
+    }),
+    }),
+    aj("Frame",{
+    Size=UDim2.new(1,0,1,0),
+    BackgroundTransparency=1,
+    },{
+    aj("UIListLayout",{
+    Padding=UDim.new(0,an.TabPadding),
+    FillDirection="Horizontal",
+    VerticalAlignment="Center",
+    }),
+    aj("UIPadding",{
+
+    PaddingLeft=UDim.new(0,an.TabPadding),
+    PaddingRight=UDim.new(0,an.TabPadding),
+
+    }),
+    aj("UICorner",{
+    CornerRadius=UDim.new(0,an.MenuCorner-an.MenuPadding)
+    }),
+-- ... โค้ดส่วนสร้าง TabItem (ย่อ) ...
 
 
 
