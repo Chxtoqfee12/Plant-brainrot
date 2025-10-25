@@ -693,17 +693,15 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- ส่วนนี้มีการจัดการไฟล์ config แยกต่างหาก ซึ่งถูกตัดออกไป
-
 -- ==========================
--- Section Player (ใช้ :Section ของ WindUI)
+-- Section Player
 -- ==========================
 MiscTab:Section({
     Title = "😎 Player"
 })
 
 -- ==========================
--- Anti-AFK (ใช้ :Toggle ของ WindUI)
+-- Anti-AFK
 -- ==========================
 MiscTab:Toggle({
     Title = "🛡️ Anti-AFK 20 นาที",
@@ -714,7 +712,6 @@ MiscTab:Toggle({
     end
 })
 
--- ฟังก์ชัน Anti-AFK (ไม่เปลี่ยน)
 task.spawn(function()
     local VirtualUser = game:GetService("VirtualUser")
     while true do
@@ -729,7 +726,7 @@ task.spawn(function()
 end)
 
 -- ==========================
--- WalkSpeed & JumpPower (ใช้ :Slider ของ WindUI)
+-- WalkSpeed & JumpPower
 -- ==========================
 MiscTab:Slider({
     Title = "🏃‍♂️ ความเร็วเดิน",
@@ -754,7 +751,7 @@ MiscTab:Slider({
 })
 
 -- ==========================
--- Time of Day Dropdown (ใช้ :Dropdown ของ WindUI)
+-- Time of Day
 -- ==========================
 local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
 local selectedSky = config.selectedSky or skyOptions[1]
@@ -762,7 +759,7 @@ local selectedSky = config.selectedSky or skyOptions[1]
 MiscTab:Dropdown({
     Title = "🕒 ปรับเวลา / ท้องฟ้า",
     Default = selectedSky,
-    Values = skyOptions, -- ใช้ Values แทน Options
+    Values = skyOptions,
     Callback = function(value)
         selectedSky = value
         config.selectedSky = value
@@ -789,7 +786,7 @@ MiscTab:Dropdown({
 })
 
 -- ==========================
--- Player Dropdown & Functions
+-- Player Dropdown
 -- ==========================
 local SelectedPlayer = config.SelectedPlayer or nil
 local PlayerDropdown
@@ -807,11 +804,10 @@ local function GetPlayersList()
     return list
 end
 
--- สร้าง Dropdown เลือกผู้เล่น (ใช้ :Dropdown ของ WindUI)
 PlayerDropdown = MiscTab:Dropdown({
     Title = "👤 เลือกผู้เล่นที่ต้องการ",
     Default = SelectedPlayer or (GetPlayersList()[1] or "ไม่มีผู้เล่น"),
-    Values = GetPlayersList(), -- ใช้ Values แทน Options
+    Values = GetPlayersList(),
     Callback = function(value)
         if value == "ไม่มีผู้เล่น" then
             SelectedPlayer = nil
@@ -823,13 +819,30 @@ PlayerDropdown = MiscTab:Dropdown({
     end
 })
 
--- ฟังก์ชันอัปเดตรายชื่อผู้เล่นอัตโนมัติ (ใช้เมธอดของ WindUI:Refresh และ :Set)
+-- ==========================
+-- ปุ่มรีเฟรชรายชื่อผู้เล่น
+-- ==========================
+MiscTab:Button({
+    Title = "🔄 รีเฟรชรายชื่อผู้เล่น",
+    Callback = function()
+        RefreshDropdown()
+        l:Notify({
+            Title = "อัปเดตรายชื่อผู้เล่น",
+            Content = "รีเฟรชรายชื่อผู้เล่นเรียบร้อยแล้ว ✅",
+            Duration = 3,
+            Icon = "check",
+        })
+    end
+})
+
+-- ==========================
+-- อัปเดต Dropdown ผู้เล่น
+-- ==========================
 local function RefreshDropdown()
     if PlayerDropdown then
         local newList = GetPlayersList()
-        PlayerDropdown:Refresh({Values = newList}) -- WindUI :Refresh ต้องการตาราง {Values = ...}
+        PlayerDropdown:Refresh({Values = newList})
         
-        -- ถ้า SelectedPlayer ยังอยู่ในเกม ให้เลือกค่าเดิม
         if SelectedPlayer and table.find(newList, SelectedPlayer) then
             PlayerDropdown:Set(SelectedPlayer)
         else
@@ -841,7 +854,6 @@ local function RefreshDropdown()
     end
 end
 
--- อัปเดตรายชื่ออัตโนมัติเมื่อผู้เล่นเข้า/ออก (ไม่เปลี่ยน)
 Players.PlayerAdded:Connect(function(plr)
     if plr ~= player then
         RefreshDropdown()
@@ -857,9 +869,8 @@ Players.PlayerRemoving:Connect(function(plr)
     RefreshDropdown()
 end)
 
-
 -- ==========================
--- ฟังก์ชันหา Carrot Launcher (ไม่เปลี่ยน)
+-- หา Carrot Launcher
 -- ==========================
 local function FindCarrotLauncher()
     for _, tool in ipairs(player.Backpack:GetChildren()) do
@@ -876,7 +887,7 @@ local function FindCarrotLauncher()
 end
 
 -- ==========================
--- ปุ่มวาปไปหา (ใช้ :Button ของ WindUI)
+-- ปุ่มวาปไปหา
 -- ==========================
 MiscTab:Button({
     Title = "📍 วาปไปหา",
@@ -911,7 +922,10 @@ MiscTab:Button({
 })
 
 -- ==========================
--- ปุ่มยิง Carrot Launcher (ใช้ :Button ของ WindUI)
+-- ปุ่มยิง Carrot Launcher
+-- ==========================
+-- ==========================
+-- ปุ่มยิง Carrot Launcher (อัปเดตให้ยิงได้จริง)
 -- ==========================
 MiscTab:Button({
     Title = "🥕 ยิง Carrot Launcher",
@@ -924,22 +938,33 @@ MiscTab:Button({
                     humanoid:EquipTool(tool)
                     task.wait(0.2)
 
+                    -- ใช้ค่าส่งตามฟลุ๊คให้มา แต่เปลี่ยนตำแหน่งให้เป็นของเป้าหมายจริง
                     local args = {
                         {
                             Toggle = true,
                             Tool = tool,
-                            Time = 0.25,
-                            Pos = target.Character.HumanoidRootPart.Position
+                            Time = 0.20554792404174804,
+                            Pos = Vector3.new(
+                                target.Character.HumanoidRootPart.Position.X,
+                                target.Character.HumanoidRootPart.Position.Y,
+                                target.Character.HumanoidRootPart.Position.Z
+                            )
                         }
                     }
-                    -- โค้ด FireServer ของ Carrot Launcher ถูกตัดออกไป (คาดว่าเดิมคือ ReplicatedStorage...)
-                    -- เนื่องจากโค้ดเดิมถูกตัดจบ จึงไม่สามารถแก้ไขส่วน FireServer ให้สมบูรณ์ได้
-                    print("ส่งคำสั่งยิง Carrot Launcher ไปที่: " .. target.Name)
 
+                    -- เรียกใช้ Remote จริง
+                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseItem"):FireServer(unpack(args))
+
+                    l:Notify({
+                        Title = "Carrot Launcher",
+                        Content = "ยิงใส่ " .. target.Name .. " เรียบร้อยแล้ว 🥕",
+                        Duration = 3,
+                        Icon = "check",
+                    })
                 else
                     l:Notify({
                         Title = "ล้มเหลว",
-                        Content = "ไม่พบ Carrot Launcher ในตัว/กระเป๋า",
+                        Content = "ไม่พบ Carrot Launcher ในตัวหรือกระเป๋า",
                         Duration = 3,
                         Icon = "x",
                     })
@@ -962,3 +987,4 @@ MiscTab:Button({
         end
     end
 })
+
