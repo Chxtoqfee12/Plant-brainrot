@@ -502,7 +502,7 @@ MiscTab:Slider({
 })
 
 MiscTab:Slider({
-    Title = "🦘 ความสามารถกระโดด",
+    Title = "🦘 กระโดดสูง",
     Value = {Min = 50, Max = 500, Default = humanoid.JumpPower},
     Step = 1,
     Callback = function(value)
