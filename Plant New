@@ -283,7 +283,7 @@ Info:Paragraph({
             Callback = function()
                 setclipboard("https://discord.gg/JtMCHtxRVb")
                 l:Notify({
-                    Title = "📋 คัดลอกสำเร็จ",
+                    Title = "คัดลอกสำเร็จ",
                     Content = "คัดลอกลิงก์ Discord แล้ว!",
                     Duration = 2
                 })
@@ -295,9 +295,9 @@ Info:Paragraph({
 -- ==========================
 -- สร้าง Tabs
 -- ==========================
-local FarmTab = Window:Tab({ Title = "🚜 ฟาร์ม", Icon = "leaf" })
-local EventTab = Window:Tab({ Title = "🎩 อีเวนท์", Icon = "gem" })
-local ShopTab = Window:Tab({ Title = "🛒 ร้านค้า", Icon = "shopping-cart" })
+local FarmTab = Window:Tab({ Title = "ฟาร์ม", Icon = "leaf" })
+local EventTab = Window:Tab({ Title = "อีเวนท์", Icon = "gem" })
+local ShopTab = Window:Tab({ Title = "ร้านค้า", Icon = "shopping-cart" })
 
 
 -- ==========================
@@ -345,15 +345,15 @@ end
 -- ==========================
 -- UI Section
 -- ==========================
-FarmTab:Section({ Title = "🚜 ฟาร์ม" })
+FarmTab:Section({ Title = "ฟาร์ม" })
 
 FarmTab:Button({
-    Title = "💾 บันทึกตำแหน่งบ้าน",
+    Title = "บันทึกตำแหน่งบ้าน",
     Callback = saveHomePosition
 })
 
 FarmTab:Toggle({
-    Title = "⚔️ โจมตี Brainrot อัตโนมัติ",
+    Title = "โจมตี Brainrot อัตโนมัติ",
     Default = false,
     Callback = function(v)
         autoAttackEnabled = v
@@ -367,7 +367,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local equipRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("EquipBestBrainrots")
 
 FarmTab:Toggle({
-    Title = "💸 เก็บเงินอัตโนมัติทุก 5 วิ",
+    Title = "เก็บเงินอัตโนมัติทุก 5 วิ",
     Default = false,
     Callback = function(value)
         autoCollectEnabled = value
@@ -752,20 +752,20 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local MiscTab = Window:Tab({ Title = "⚙️ อื่นๆ", Icon = "settings" })
+local MiscTab = Window:Tab({ Title = "อื่นๆ", Icon = "settings" })
 
 -- ==========================
 -- Section Player
 -- ==========================
 MiscTab:Section({
-    Title = "😎 Player"
+    Title = "Player"
 })
 
 -- ==========================
 -- Anti-AFK
 -- ==========================
 MiscTab:Toggle({
-    Title = "🛡️ Anti-AFK 20 นาที",
+    Title = "Anti-AFK 20 นาที",
     Default = config.antiAFK or false,
     Callback = function(value)
         config.antiAFK = value
@@ -790,7 +790,7 @@ end)
 -- WalkSpeed & JumpPower
 -- ==========================
 MiscTab:Slider({
-    Title = "🏃‍♂️ ความเร็วเดิน",
+    Title = "ความเร็วเดิน",
     Value = {Min = 16, Max = 500, Default = humanoid.WalkSpeed},
     Step = 1,
     Callback = function(value)
@@ -801,7 +801,7 @@ MiscTab:Slider({
 })
 
 MiscTab:Slider({
-    Title = "🦘 กระโดดสูง",
+    Title = "กระโดดสูง",
     Value = {Min = 50, Max = 500, Default = humanoid.JumpPower},
     Step = 1,
     Callback = function(value)
@@ -814,7 +814,7 @@ MiscTab:Slider({
 -- ==========================
 -- Time of Day
 -- ==========================
-local skyOptions = { "เช้า 🌅", "เย็น 🌇", "พระอาทิตย์ตก 🌄", "กลางคืน 🌌" }
+local skyOptions = { "เช้า", "เย็น", "พระอาทิตย์ตก", "กลางคืน" }
 local selectedSky = config.selectedSky or skyOptions[1]
 
 MiscTab:Dropdown({
@@ -826,19 +826,19 @@ MiscTab:Dropdown({
         config.selectedSky = value
         saveConfig()
         local lighting = game:GetService("Lighting")
-        if value == "เช้า 🌅" then
+        if value == "เช้า" then
             lighting.TimeOfDay = "06:30:00"
             lighting.Brightness = 2
             lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 255)
-        elseif value == "เย็น 🌇" then
+        elseif value == "เย็น" then
             lighting.TimeOfDay = "17:30:00"
             lighting.Brightness = 1.5
             lighting.OutdoorAmbient = Color3.fromRGB(255, 180, 120)
-        elseif value == "พระอาทิตย์ตก 🌄" then
+        elseif value == "พระอาทิตย์ตก" then
             lighting.TimeOfDay = "18:15:00"
             lighting.Brightness = 1.2
             lighting.OutdoorAmbient = Color3.fromRGB(255, 150, 100)
-        elseif value == "กลางคืน 🌌" then
+        elseif value == "กลางคืน" then
             lighting.TimeOfDay = "22:00:00"
             lighting.Brightness = 0.7
             lighting.OutdoorAmbient = Color3.fromRGB(50, 50, 80)
@@ -866,7 +866,7 @@ local function GetPlayersList()
 end
 
 PlayerDropdown = MiscTab:Dropdown({
-    Title = "👤 เลือกผู้เล่นที่ต้องการ",
+    Title = "เลือกผู้เล่นที่ต้องการ",
     Default = SelectedPlayer or (GetPlayersList()[1] or "ไม่มีผู้เล่น"),
     Values = GetPlayersList(),
     Callback = function(value)
@@ -884,12 +884,12 @@ PlayerDropdown = MiscTab:Dropdown({
 -- ปุ่มรีเฟรชรายชื่อผู้เล่น
 -- ==========================
 MiscTab:Button({
-    Title = "🔄 รีเฟรชรายชื่อผู้เล่น",
+    Title = "รีเฟรชรายชื่อผู้เล่น",
     Callback = function()
         RefreshDropdown()
         l:Notify({
             Title = "อัปเดตรายชื่อผู้เล่น",
-            Content = "รีเฟรชรายชื่อผู้เล่นเรียบร้อยแล้ว ✅",
+            Content = "รีเฟรชรายชื่อผู้เล่นเรียบร้อยแล้ว",
             Duration = 3,
             Icon = "check",
         })
@@ -951,7 +951,7 @@ end
 -- ปุ่มวาปไปหา
 -- ==========================
 MiscTab:Button({
-    Title = "📍 วาปไปหา",
+    Title = "วาปไปหา",
     Callback = function()
         if SelectedPlayer then
             local target = Players:FindFirstChild(SelectedPlayer)
@@ -982,14 +982,12 @@ MiscTab:Button({
     end
 })
 
--- ==========================
--- ปุ่มยิง Carrot Launcher
--- ==========================
+
 -- ==========================
 -- ปุ่มยิง Carrot Launcher (อัปเดตให้ยิงได้จริง)
 -- ==========================
 MiscTab:Button({
-    Title = "🥕 ยิง Carrot Launcher",
+    Title = "ยิง Carrot Launcher",
     Callback = function()
         if SelectedPlayer then
             local target = Players:FindFirstChild(SelectedPlayer)
@@ -1018,7 +1016,7 @@ MiscTab:Button({
 
                     l:Notify({
                         Title = "Carrot Launcher",
-                        Content = "ยิงใส่ " .. target.Name .. " เรียบร้อยแล้ว 🥕",
+                        Content = "ยิงใส่ " .. target.Name .. " เรียบร้อยแล้ว",
                         Duration = 3,
                         Icon = "check",
                     })
