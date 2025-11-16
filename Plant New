@@ -179,7 +179,7 @@ task.spawn(function()
         local ping = getPing() or "N/A"
 
         local titleText = string.format(
-            "v3.5.8 [BETA]  |  Ping: %s ms  |  FPS: %d",
+            "v2.0.0  |  Ping: %s ms  |  FPS: %d",
             tostring(ping),
             fpsValue
         )
@@ -609,7 +609,7 @@ local buyAllSeedsEnabled = config.buyAllSeedsEnabled or false
 -- Section: Gears Shop (ใช้ :Section ของ WindUI)
 -- ==========================
 ShopTab:Section({
-    Title = "🛒 Gear"
+    Title = "Gear"
 })
 
 -- Toggle ซื้อ Gear ทั้งหมด (ใช้ :Toggle ของ WindUI)
@@ -640,7 +640,7 @@ end
 -- Section: Seeds Shop (ใช้ :Section ของ WindUI)
 -- ==========================
 ShopTab:Section({
-    Title = "🛒 Seed"
+    Title = "Seed"
 })
 
 -- Toggle ซื้อ Seed ทั้งหมด (ใช้ :Toggle ของ WindUI)
@@ -818,7 +818,7 @@ local skyOptions = { "เช้า", "เย็น", "พระอาทิต�
 local selectedSky = config.selectedSky or skyOptions[1]
 
 MiscTab:Dropdown({
-    Title = "🕒 ปรับเวลา / ท้องฟ้า",
+    Title = "ปรับเวลา / ท้องฟ้า",
     Default = selectedSky,
     Values = skyOptions,
     Callback = function(value)
