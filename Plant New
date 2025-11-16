@@ -461,7 +461,6 @@ attackDelay = 0.000000001 -- 1ms
 
 task.spawn(function()
     while true do
-        -- ไม่ต้อง wait เพื่อความเร็วสูงสุด
         local char = player.Character
         if not char or not autoAttackEnabled then
             startFarming = false
@@ -526,6 +525,30 @@ task.spawn(function()
         -- ฟาร์ม Brainrot แบบตีเร็วสุด
         -- ==========================
         if startFarming then
+            -- equip Tool ใดๆ ที่มีคำว่า "bat" ในชื่อ
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                local foundBat = false
+                for _, tool in ipairs(player.Backpack:GetChildren()) do
+                    if tool:IsA("Tool") and string.find(string.lower(tool.Name), "bat") then
+                        -- equip ถ้ายังไม่ได้ถือ
+                        if humanoid:FindFirstChildOfClass("Tool") ~= tool then
+                            humanoid:EquipTool(tool)
+                        end
+                        foundBat = true
+                        break
+                    end
+                end
+                -- ถ้าไม่มีในกระเป๋า แต่ถืออยู่แล้ว ตรวจว่ามีคำว่า "bat" ไหม
+                if not foundBat then
+                    local equipped = humanoid:FindFirstChildOfClass("Tool")
+                    if equipped and string.find(string.lower(equipped.Name), "bat") then
+                        foundBat = true
+                    end
+                end
+            end
+
+            -- ถ้ามีเป้าหมาย Brainrot
             local target = getClosestBrainrot()
             if target then
                 local part = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChildWhichIsA("BasePart")
